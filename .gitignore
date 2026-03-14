@@ -1,0 +1,10 @@
+build*/
+cmake-build-*/
+data/
+.cache/
+.idea/
+.vscode/
+CMakeFiles/
+log/
+CMakeCache.txt
+compile_commands.json
