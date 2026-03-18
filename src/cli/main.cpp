@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <skymapf/skymapf.hpp>
+#include <skymapf/version.hpp>
 
 int main() {
     std::cout << "SkyMAPF CLI - version " << skymapf::kVersionString << '\n';

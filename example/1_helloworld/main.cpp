@@ -1,5 +1,5 @@
 #include <iostream>
-#include <skymapf/skymapf.hpp>
+#include <skymapf/version.hpp>
 
 int main() {
     std::cout << "SkyMAPF version: " << SKYMAPF_VERSION << '\n';
