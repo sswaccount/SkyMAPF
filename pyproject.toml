@@ -28,6 +28,7 @@ classifiers = [
 ]
 
 [tool.scikit-build]
+wheel.packages = []
 build-dir = "build/{wheel_tag}"
 
 [tool.cibuildwheel]

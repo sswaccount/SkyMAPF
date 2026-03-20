@@ -25,7 +25,7 @@ endif()
 
 # Project switches.
 option(SKYMAPF_BUILD_CLI "Build CLI executable under src/cli." ON)
-option(SKYMAPF_BUILD_TESTS "Build tests under test/." ON)
+option(SKYMAPF_BUILD_TESTS "Build tests under test/." OFF)
 option(SKYMAPF_BUILD_EXAMPLES "Build examples under example/." OFF)
 option(SKYMAPF_BUILD_PYTHON_BINDINGS "Build Python bindings under bindings/python." ON)
 option(SKYMAPF_WARNINGS_AS_ERRORS "Treat compiler warnings as errors." OFF)
