@@ -4,12 +4,10 @@
 #include <string>
 #include <vector>
 
+#include "../agent/agent.hpp"
 #include "../common/ids.hpp"
+#include "../task/task.hpp"
 #include "../world/world_model.hpp"
-
-namespace skymapf::task {
-class Task;
-}  // namespace skymapf::task
 
 namespace skymapf::solver {
 
@@ -40,12 +38,14 @@ struct SolveOptions {
 };
 
 struct Plan {
-    std::vector<std::vector<common::CellId>> agent_paths;
+    std::vector<std::vector<common::CellIndex>> agent_paths;
 };
 
 struct SolveInstance {
     world::WorldModel world;
-    std::vector<const task::Task*> tasks;
+    std::vector<agent::AgentSpec> agents;
+    std::vector<task::Task> tasks;
+    common::TimeStep current_time{0};
 };
 
 struct SolveResult {

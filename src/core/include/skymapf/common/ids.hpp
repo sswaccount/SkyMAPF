@@ -10,5 +10,7 @@ using ScenarioId = std::uint64_t;
 using AgentId = std::uint64_t;
 using CellId = std::uint64_t;
 using TraceId = std::uint64_t;
+using CellIndex = std::uint64_t;
+using TimeStep = std::uint32_t;
 
 }
