@@ -1,3 +1,7 @@
+/**
+ * @file connectivity.cpp
+ * @brief Implements built-in connectivity policies for world traversal.
+ */
 #include "skymapf/world/connectivity.hpp"
 
 #include "skymapf/common/index.hpp"

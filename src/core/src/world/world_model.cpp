@@ -1,3 +1,7 @@
+/**
+ * @file world_model.cpp
+ * @brief Implements world model state mutation and policy delegation.
+ */
 #include "skymapf/world/world_model.hpp"
 
 #include <utility>
@@ -10,6 +14,7 @@ namespace skymapf::world {
 namespace {
 
 common::CellIndex calc_cell_count(const common::SpaceSpec& spec) noexcept {
+    // Centralize cell-count logic so all world initialization paths stay consistent.
     if (!spec.is_valid()) {
         return 0;
     }

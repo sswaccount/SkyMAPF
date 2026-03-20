@@ -1,3 +1,7 @@
+/**
+ * @file occupancy.hpp
+ * @brief Defines occupancy map interfaces used by world models.
+ */
 #pragma once
 
 #include <cstdint>
@@ -8,6 +12,11 @@
 
 namespace skymapf::world {
 
+/**
+ * @brief Abstracts walkability storage for world cells.
+ *
+ * Different implementations may optimize for dense, sparse, or dynamic maps.
+ */
 class IOccupancyMap {
 public:
     virtual ~IOccupancyMap() = default;
@@ -17,6 +26,7 @@ public:
     virtual void set_walkable(common::CellIndex index, bool walkable) = 0;
 };
 
+/// Dense walkability storage implementation backed by a byte vector.
 class DenseOccupancyMap final : public IOccupancyMap {
 public:
     explicit DenseOccupancyMap(common::CellIndex cell_count, bool default_walkable = true)
@@ -44,6 +54,7 @@ private:
     std::vector<std::uint8_t> walkable_;
 };
 
+/// Shared ownership handle for occupancy map implementations.
 using OccupancyMapPtr = std::shared_ptr<IOccupancyMap>;
 
 }  // namespace skymapf::world

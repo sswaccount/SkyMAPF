@@ -1,3 +1,7 @@
+/**
+ * @file scenario_generator.hpp
+ * @brief Defines collection and conversion helpers from world/tasks to scenarios.
+ */
 #pragma once
 
 #include <string>
@@ -11,7 +15,9 @@
 
 namespace skymapf::generator {
 
-// Decoupled storage that binds one world with multiple tasks.
+/**
+ * @brief Decoupled storage that binds one world with multiple tasks.
+ */
 class ScenarioCollection {
 public:
     ScenarioCollection() = default;
@@ -36,13 +42,22 @@ private:
     std::string name_;
 };
 
+/// Options controlling scenario id allocation and initial time semantics.
 struct ScenarioBuildOptions {
     common::ScenarioId first_scenario_id{1};
-    bool use_task_release_time_as_start_time{true};
+    bool use_agent_start_time_as_start_time{true};
 };
 
+/// Utility that converts world/task collections into scenario instances.
 class ScenarioGenerator {
 public:
+    /**
+     * @brief Builds one scenario per task using a shared world definition.
+     *
+     * @param collection World/task collection.
+     * @param options Scenario id and initial-time settings.
+     * @return Scenario list preserving task order.
+     */
     static std::vector<scenario::Scenario> build_scenarios(
         const ScenarioCollection& collection,
         ScenarioBuildOptions options = {}

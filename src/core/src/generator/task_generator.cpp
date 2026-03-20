@@ -1,3 +1,7 @@
+/**
+ * @file task_generator.cpp
+ * @brief Implements default sampling strategies for multi-agent task generation.
+ */
 #include "skymapf/generator/task_generator.hpp"
 
 #include <algorithm>
@@ -71,7 +75,7 @@ TaskGenerationResult TaskGenerator::generate(
     std::mt19937_64 rng(request.random_seed);
     std::shuffle(walkable.begin(), walkable.end(), rng);
 
-    task::Task task_data = task::Task::create(request.task_id, request.timing, request.name);
+    task::Task task_data = task::Task::create(request.task_id, request.name);
     for (std::size_t i = 0; i < request.agent_ids.size(); ++i) {
         const auto start = walkable[i % walkable.size()];
         auto seq = route_strategy->sample(
@@ -84,7 +88,12 @@ TaskGenerationResult TaskGenerator::generate(
             result.error_message = "Route strategy failed to produce a valid visit sequence.";
             return result;
         }
-        task_data.upsert_agent_sequence(request.agent_ids[i], std::move(seq));
+        task_data.upsert_agent_sequence(
+            request.agent_ids[i],
+            std::move(seq),
+            request.start_time,
+            task::AgentTaskStatus::Pending
+        );
     }
 
     result.task = std::move(task_data);

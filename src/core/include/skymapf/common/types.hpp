@@ -1,3 +1,7 @@
+/**
+ * @file types.hpp
+ * @brief Aggregates commonly used foundational SkyMAPF types.
+ */
 #pragma once
 
 #include "coord.hpp"

@@ -1,3 +1,7 @@
+/**
+ * @file validation.cpp
+ * @brief Implements semantic validation for generated and loaded tasks.
+ */
 #include "skymapf/task/validation.hpp"
 
 #include <iterator>
@@ -33,15 +37,6 @@ TaskValidationResult validate_task(const Task& task, const world::WorldModel& wo
             "Task does not contain any agent sequence."
         );
         return result;
-    }
-
-    if (task.timing().deadline.has_value() && *task.timing().deadline < task.timing().release_time) {
-        add_issue(
-            result,
-            TaskValidationCode::DeadlineBeforeRelease,
-            task.task_id(),
-            "Task deadline is earlier than release_time."
-        );
     }
 
     std::unordered_set<common::AgentId> seen_agents;

@@ -1,3 +1,7 @@
+/**
+ * @file validation.cpp
+ * @brief Implements world connectivity analysis and validation helpers.
+ */
 #include "skymapf/world/validation.hpp"
 
 #include <algorithm>
@@ -20,6 +24,7 @@ ConnectivityAnalysis analyze_connectivity(
     const WorldModel& world,
     bool collect_representatives
 ) {
+    // BFS over walkable cells is used to compute component-level statistics in one pass.
     ConnectivityAnalysis analysis;
     const auto cell_count = world.cell_count();
     std::vector<std::uint8_t> visited(static_cast<std::size_t>(cell_count), 0u);

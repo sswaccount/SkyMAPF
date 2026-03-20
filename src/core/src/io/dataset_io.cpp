@@ -1,3 +1,7 @@
+/**
+ * @file dataset_io.cpp
+ * @brief Implements filesystem-backed JSON dataset serialization.
+ */
 #include "skymapf/io/dataset_io.hpp"
 
 #include <fstream>
@@ -19,6 +23,7 @@ constexpr const char* kWorldFile = "world.json";
 constexpr const char* kTasksFile = "tasks.json";
 
 std::string fnv1a64_hex(std::string_view text) {
+    // A lightweight non-cryptographic checksum is sufficient for corruption detection.
     std::uint64_t hash = 14695981039346656037ull;
     for (const auto ch : text) {
         hash ^= static_cast<std::uint8_t>(ch);
@@ -29,32 +34,32 @@ std::string fnv1a64_hex(std::string_view text) {
     return oss.str();
 }
 
-std::string status_to_string(task::TaskStatus status) {
+std::string status_to_string(task::AgentTaskStatus status) {
     switch (status) {
-    case task::TaskStatus::Pending:
+    case task::AgentTaskStatus::Pending:
         return "pending";
-    case task::TaskStatus::Active:
+    case task::AgentTaskStatus::Active:
         return "active";
-    case task::TaskStatus::Completed:
+    case task::AgentTaskStatus::Completed:
         return "completed";
-    case task::TaskStatus::Failed:
+    case task::AgentTaskStatus::Failed:
         return "failed";
     default:
         return "pending";
     }
 }
 
-task::TaskStatus task_status_from_string(const std::string& text) {
+task::AgentTaskStatus task_status_from_string(const std::string& text) {
     if (text == "active") {
-        return task::TaskStatus::Active;
+        return task::AgentTaskStatus::Active;
     }
     if (text == "completed") {
-        return task::TaskStatus::Completed;
+        return task::AgentTaskStatus::Completed;
     }
     if (text == "failed") {
-        return task::TaskStatus::Failed;
+        return task::AgentTaskStatus::Failed;
     }
-    return task::TaskStatus::Pending;
+    return task::AgentTaskStatus::Pending;
 }
 
 json world_to_json(const world::WorldModel& world_model) {
@@ -125,18 +130,13 @@ json task_to_json(const task::Task& task_data) {
     json j;
     j["task_id"] = task_data.task_id();
     j["name"] = task_data.name();
-    j["status"] = status_to_string(task_data.status());
-    j["timing"] = {
-        {"release_time", task_data.timing().release_time},
-        {"deadline", task_data.timing().deadline.has_value()
-                         ? json(*task_data.timing().deadline)
-                         : json(nullptr)},
-    };
 
     json sequences = json::array();
     for (const auto& seq : task_data.agent_sequences()) {
         sequences.push_back({
             {"agent_id", seq.agent_id},
+            {"start_time", seq.start_time},
+            {"status", status_to_string(seq.status)},
             {"checkpoints", seq.visit_sequence.checkpoints},
         });
     }
@@ -151,21 +151,10 @@ std::optional<task::Task> task_from_json(const json& j, std::string* error_messa
         }
         return std::nullopt;
     }
-    task::TaskTiming timing;
-    if (j.contains("timing")) {
-        const auto& t = j.at("timing");
-        timing.release_time = t.value("release_time", 0u);
-        if (t.contains("deadline") && !t.at("deadline").is_null()) {
-            timing.deadline = t.at("deadline").get<common::TimeStep>();
-        }
-    }
-
     task::Task task_data = task::Task::create(
         j.at("task_id").get<common::TaskId>(),
-        timing,
         j.value("name", std::string{})
     );
-    task_data.set_status(task_status_from_string(j.value("status", std::string{"pending"})));
 
     if (!j.contains("agent_sequences") || !j.at("agent_sequences").is_array()) {
         if (error_message) {
@@ -175,10 +164,12 @@ std::optional<task::Task> task_from_json(const json& j, std::string* error_messa
     }
     for (const auto& seq : j.at("agent_sequences")) {
         const auto agent_id = seq.at("agent_id").get<common::AgentId>();
+        const auto start_time = seq.value("start_time", static_cast<common::TimeStep>(0));
+        const auto status = task_status_from_string(seq.value("status", std::string{"pending"}));
         const auto checkpoints = seq.at("checkpoints").get<std::vector<common::CellIndex>>();
         task::VisitSequence visit_sequence;
         visit_sequence.checkpoints = checkpoints;
-        task_data.upsert_agent_sequence(agent_id, std::move(visit_sequence));
+        task_data.upsert_agent_sequence(agent_id, std::move(visit_sequence), start_time, status);
     }
     return task_data;
 }
@@ -329,8 +320,9 @@ std::vector<scenario::Scenario> DatasetIO::make_scenarios(
     common::ScenarioId scenario_id = first_scenario_id;
     for (const auto& task_data : data.tasks) {
         common::TimeStep time = 0;
-        if (task_data.timing().release_time != 0) {
-            time = task_data.timing().release_time;
+        const auto earliest = task_data.earliest_start_time();
+        if (earliest.has_value() && *earliest != 0) {
+            time = *earliest;
         }
         scenarios.push_back(scenario::Scenario::create(
             scenario_id++,

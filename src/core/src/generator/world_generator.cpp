@@ -1,3 +1,7 @@
+/**
+ * @file world_generator.cpp
+ * @brief Implements obstacle layout and connectivity-aware world generation.
+ */
 #include "skymapf/generator/world_generator.hpp"
 
 #include <algorithm>
@@ -96,6 +100,7 @@ bool ConnectedCarvingObstacleLayoutStrategy::apply(
     target_walkable = std::max<std::size_t>(1, target_walkable);
     target_walkable = std::min<std::size_t>(target_walkable, static_cast<std::size_t>(total));
 
+    // Start from a fully blocked map and carve one connected walkable region.
     for (common::CellIndex i = 0; i < total; ++i) {
         world_model.set_walkable(i, false);
     }

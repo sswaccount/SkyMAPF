@@ -1,3 +1,7 @@
+/**
+ * @file world_generator.hpp
+ * @brief Defines strategies and APIs for procedural world generation.
+ */
 #pragma once
 
 #include <cstddef>
@@ -9,12 +13,16 @@
 
 namespace skymapf::generator {
 
+/// Parameters controlling obstacle density sampling.
 struct ObstacleDensityConfig {
     // Obstacle ratio in [0, 1). 0 means empty map.
     double obstacle_density{0.2};
     std::uint64_t random_seed{0};
 };
 
+/**
+ * @brief Strategy interface for generating obstacle layouts.
+ */
 class IObstacleLayoutStrategy {
 public:
     virtual ~IObstacleLayoutStrategy() = default;
@@ -35,6 +43,9 @@ public:
     ) const override;
 };
 
+/**
+ * @brief Strategy interface for repairing disconnected walkable regions.
+ */
 class IConnectivityRepairStrategy {
 public:
     virtual ~IConnectivityRepairStrategy() = default;
@@ -56,14 +67,24 @@ struct WorldGenerationRequest {
     std::shared_ptr<IConnectivityRepairStrategy> repair_strategy;
 };
 
+/// Result bundle for world generation requests.
 struct WorldGenerationResult {
     world::WorldModel world;
     bool connected{true};
     std::size_t attempts_used{1};
 };
 
+/**
+ * @brief Generates a world using configurable obstacle and repair strategies.
+ */
 class WorldGenerator {
 public:
+    /**
+     * @brief Generates one world instance from request settings.
+     *
+     * @param request World generation options and strategy objects.
+     * @return Generated world together with connectivity status metadata.
+     */
     static WorldGenerationResult generate(const WorldGenerationRequest& request);
 };
 

@@ -1,3 +1,7 @@
+/**
+ * @file skymapf.hpp
+ * @brief Umbrella header aggregating the public SkyMAPF API surface.
+ */
 #pragma once
 
 #include "agent/agent.hpp"

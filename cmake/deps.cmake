@@ -16,6 +16,21 @@ if(NOT nlohmann_json_FOUND)
   FetchContent_MakeAvailable(nlohmann_json)
 endif()
 
+if(SKYMAPF_BUILD_CLI)
+  if(SKYMAPF_USE_SYSTEM_DEPS)
+    find_package(CLI11 CONFIG QUIET)
+  endif()
+
+  if(NOT CLI11_FOUND)
+    FetchContent_Declare(
+      CLI11
+      GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+      GIT_TAG v2.5.0
+    )
+    FetchContent_MakeAvailable(CLI11)
+  endif()
+endif()
+
 if(SKYMAPF_BUILD_TESTS)
   if(SKYMAPF_USE_SYSTEM_DEPS)
     find_package(Catch2 3 CONFIG QUIET)

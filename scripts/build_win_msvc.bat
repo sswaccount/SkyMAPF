@@ -16,7 +16,7 @@ if not "%BUILD_TYPE%"=="" set "BUILD_TYPE=%BUILD_TYPE%"
 
 REM Resolve project root from scripts/ directory
 for %%I in ("%~dp0..") do set "ROOT_DIR=%%~fI"
-set "BUILD_DIR=%ROOT_DIR%\build"
+set "BUILD_DIR=%ROOT_DIR%\build_win_msvc"
 
 REM Default switches
 set "BUILD_CLI=ON"

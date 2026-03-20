@@ -1,25 +1,38 @@
+/**
+ * @file space.hpp
+ * @brief Defines discrete space kinds, shapes, and validation helpers.
+ */
 #pragma once
 
 #include <cstdint>
 
 namespace skymapf::common {
 
+/// Classifies whether a world uses 2D or 3D discrete space.
 enum class SpaceKind {
     Plane2D,
     Space3D
 };
 
+/// Stores 2D grid shape in (cols, rows) order.
 struct GridShape2D {
     std::int32_t cols{0};
     std::int32_t rows{0};
 };
 
+/// Stores 3D grid shape in (cols, rows, layers) order.
 struct GridShape3D {
     std::int32_t cols{0};
     std::int32_t rows{0};
     std::int32_t layers{0};
 };
 
+/**
+ * @brief Represents the discrete dimensions of a world.
+ *
+ * The type is mutable and supports both 2D and 3D configurations.
+ * A 2D space always uses exactly one layer.
+ */
 class SpaceSpec {
 public:
     SpaceSpec() = default;
