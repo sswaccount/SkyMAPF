@@ -30,7 +30,8 @@ jobs:
           CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-*"
           CIBW_SKIP: "*-musllinux_*"
           CIBW_ARCHS_WINDOWS: "AMD64"
-          CIBW_ARCHS_MACOS: "x86_64"
+          CIBW_ARCHS_MACOS: "native"
+          CIBW_BUILD_VERBOSITY_MACOS: "1"
           CIBW_TEST_COMMAND: 'python -c "import skymapf; print(skymapf.__version__)"'
 
       - name: Upload wheel artifacts
