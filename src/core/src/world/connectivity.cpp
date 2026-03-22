@@ -9,7 +9,7 @@
 
 #include "skymapf/common/index.hpp"
 #include "skymapf/common/move.hpp"
-#include "skymapf/world/world_model.hpp"
+#include "skymapf/world/model.hpp"
 
 namespace skymapf::world {
 

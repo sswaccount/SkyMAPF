@@ -2,7 +2,7 @@
  * @file edge_generation_strategy.cpp
  * @brief Implements built-in edge generation strategies.
  */
-#include "skymapf/generator/edge_generation_strategy.hpp"
+#include "skymapf/generator/strategy/edge_generation_strategy.hpp"
 
 #include "skymapf/world/connectivity.hpp"
 

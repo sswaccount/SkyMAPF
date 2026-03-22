@@ -12,7 +12,6 @@
 #include <nlohmann/json.hpp>
 
 #include "skymapf/common/space.hpp"
-#include "skymapf/generator/scenario_generator.hpp"
 #include "skymapf/world/occupancy.hpp"
 
 namespace skymapf::io {
@@ -57,6 +56,8 @@ task::GoalArrivalBehavior goal_behavior_from_string(const std::string& text) {
 
 json world_to_json(const world::WorldModel& world_model) {
     json j;
+    j["world_id"] = world_model.id();
+    j["name"] = world_model.name();
     const auto& spec = world_model.space_spec();
     const auto kind = spec.is_3d() ? "3d" : "2d";
     j["space"] = {
@@ -103,6 +104,8 @@ std::optional<world::WorldModel> world_from_json(const json& j, std::string* err
         return std::nullopt;
     }
 
+    const auto parsed_world_id = j.value("world_id", static_cast<common::WorldId>(0));
+    const auto parsed_world_name = j.value("name", std::string{});
     world::WorldModel world_model(
         spec,
         [](common::CellIndex cell_count) {
@@ -111,7 +114,10 @@ std::optional<world::WorldModel> world_from_json(const json& j, std::string* err
                 occupancy->set_walkable(index, false);
             }
             return occupancy;
-        }
+        },
+        {},
+        parsed_world_id == 0 ? std::nullopt : std::optional<common::WorldId>{parsed_world_id},
+        parsed_world_name.empty() ? std::nullopt : std::optional<std::string>{parsed_world_name}
     );
     if (!j.contains("walkable_indices") || !j.at("walkable_indices").is_array()) {
         if (error_message) {
@@ -326,9 +332,9 @@ scenario::ScenarioModel DatasetIO::make_scenario_model(
     }
     return scenario::ScenarioModel::create(
         scenario_id,
+        std::move(name),
         data.world,
-        data.tasks,
-        std::move(name)
+        data.tasks
     );
 }
 
@@ -337,10 +343,7 @@ std::vector<instance::InstanceModel> DatasetIO::make_instances(
     common::InstanceId first_instance_id
 ) {
     const auto scenario_model = make_scenario_model(data);
-    return generator::ScenarioGenerator::generate(
-        scenario_model,
-        generator::InstanceGenerationOptions{first_instance_id}
-    );
+    return scenario_model.export_instances(first_instance_id);
 }
 
 std::optional<std::vector<instance::InstanceModel>> DatasetIO::read_dataset_as_instances(

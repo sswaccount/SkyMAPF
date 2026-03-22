@@ -2,7 +2,7 @@
  * @file obstacle_layout_strategy.cpp
  * @brief Implements built-in obstacle layout strategies.
  */
-#include "skymapf/generator/obstacle_layout_strategy.hpp"
+#include "skymapf/generator/strategy/obstacle_layout_strategy.hpp"
 
 #include <algorithm>
 #include <cmath>

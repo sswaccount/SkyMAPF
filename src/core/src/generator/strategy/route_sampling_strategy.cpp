@@ -2,10 +2,12 @@
  * @file route_sampling_strategy.cpp
  * @brief Implements default route sampling strategies for task generation.
  */
-#include "skymapf/generator/route_sampling_strategy.hpp"
+#include "skymapf/generator/strategy/route_sampling_strategy.hpp"
 
 #include <random>
 #include <vector>
+
+#include "skymapf/generator/task_generator.hpp"
 
 namespace skymapf::generator {
 
@@ -24,32 +26,38 @@ std::vector<common::CellIndex> collect_walkable_cells(const world::WorldModel& w
 
 }  // namespace
 
-task::SequenceModel RandomReachableRouteSamplingStrategy::sample(
-    const world::WorldModel& world_model,
-    common::CellIndex start,
-    std::size_t waypoint_count,
-    std::uint64_t random_seed
+RouteSamplingResult RandomReachableRouteSamplingStrategy::sample(
+    const RouteSamplingContext& context
 ) const {
+    RouteSamplingResult result;
     task::SequenceModel seq;
+    const auto& world_model = context.world;
+    const auto start = context.start_cell;
     if (!world_model.is_valid_index(start) || !world_model.is_walkable(start)) {
-        return seq;
+        result.error_message = "Invalid or non-walkable start cell.";
+        return result;
     }
 
     auto walkable = collect_walkable_cells(world_model);
     if (walkable.empty()) {
-        return seq;
+        result.error_message = "World has no walkable cell.";
+        return result;
     }
 
-    std::mt19937_64 rng(random_seed);
+    std::mt19937_64 rng(context.agent_seed);
     std::uniform_int_distribution<std::size_t> pick(0, walkable.size() - 1);
+    const auto max_size = context.options.max_sequence_size;
+    std::uniform_int_distribution<std::size_t> seq_len_pick(2, max_size);
+    const auto sequence_size = seq_len_pick(rng);
 
-    seq.checkpoints.reserve(waypoint_count + 2);
+    seq.checkpoints.reserve(sequence_size);
     seq.checkpoints.push_back(start);
-    for (std::size_t i = 0; i < waypoint_count; ++i) {
+    for (std::size_t i = 0; i + 1 < sequence_size; ++i) {
         seq.checkpoints.push_back(walkable[pick(rng)]);
     }
-    seq.checkpoints.push_back(walkable[pick(rng)]);
-    return seq;
+    result.success = true;
+    result.sequence = std::move(seq);
+    return result;
 }
 
 }  // namespace skymapf::generator

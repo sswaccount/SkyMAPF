@@ -4,14 +4,18 @@
  */
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "../agent/agent.hpp"
-#include "task_model.hpp"
+#include "model.hpp"
 
 namespace skymapf::world {
 class WorldModel;
+}
+namespace skymapf::generator {
+struct TaskGenerationOptions;
 }
 
 namespace skymapf::task {
@@ -26,6 +30,10 @@ enum class TaskValidationCode {
     DuplicateAgentInTask,
     DuplicateAgentTask,
     AgentNotFound,
+    GeneratedAgentCountMismatch,
+    GeneratedInvalidStartTimeRange,
+    GeneratedSequenceTooLong,
+    GeneratedInvalidStartCell,
 };
 
 /// Describes one validation issue with context.
@@ -33,6 +41,7 @@ struct TaskValidationIssue {
     TaskValidationCode code{TaskValidationCode::NotEnoughCheckpoints};
     common::TaskId task_id{0};
     std::string message;
+    std::optional<std::size_t> agent_index;
 };
 
 /// Aggregates validation status and issue list.
@@ -64,6 +73,20 @@ TaskValidationResult validate_tasks(
     const std::vector<agent::AgentSpec>& agents,
     const world::WorldModel& world,
     bool enforce_one_active_task_per_agent = true
+);
+
+/**
+ * @brief Validates one generated task against generation options and world constraints.
+ *
+ * @param task Generated task model.
+ * @param world World used for spatial checks.
+ * @param options Options used for generation.
+ * @return Validation result for generation-time invariants.
+ */
+TaskValidationResult validate_generated_task(
+    const TaskModel& task,
+    const world::WorldModel& world,
+    const generator::TaskGenerationOptions& options
 );
 
 }  // namespace skymapf::task

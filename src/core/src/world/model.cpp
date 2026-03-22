@@ -1,14 +1,16 @@
 /**
- * @file world_model.cpp
+ * @file model.cpp
  * @brief Implements world model state mutation and policy delegation.
  */
-#include "skymapf/world/world_model.hpp"
+#include "skymapf/world/model.hpp"
 
 #include <memory>
 #include <utility>
 
 #include "skymapf/common/index.hpp"
 #include "skymapf/common/space.hpp"
+#include "skymapf/utils/default_naming.hpp"
+#include "skymapf/utils/id_generator.hpp"
 #include "skymapf/world/connectivity.hpp"
 #include "skymapf/world/occupancy.hpp"
 
@@ -38,15 +40,20 @@ WorldModel::WorldModel()
 WorldModel::WorldModel(
     common::SpaceSpec space_spec,
     OccupancyFactory occupancy_factory,
-    ConnectivityFactory connectivity_factory
+    ConnectivityFactory connectivity_factory,
+    std::optional<common::WorldId> id,
+    std::optional<std::string> name
 )
-    : space_spec_(std::move(space_spec)),
+    : id_(id.value_or(utils::IdGenerator::next_world_id())),
+      name_(),
+      space_spec_(std::move(space_spec)),
       occupancy_factory_(occupancy_factory ? std::move(occupancy_factory) : build_default_occupancy_factory()),
       connectivity_factory_(
           connectivity_factory ? std::move(connectivity_factory) : build_default_connectivity_factory()
       ),
       occupancy_(nullptr),
       connectivity_policy_(nullptr) {
+    name_ = name.value_or(utils::DefaultNaming::world_name(space_spec_, id_));
     occupancy_ = occupancy_factory_(common::cell_count(space_spec_));
     connectivity_policy_ = connectivity_factory_();
 }

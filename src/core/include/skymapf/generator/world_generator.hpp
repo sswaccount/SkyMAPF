@@ -5,47 +5,50 @@
 #pragma once
 
 #include <memory>
+#include <optional>
+#include <string>
 #include <utility>
 
 #include "../common/space.hpp"
-#include "./edge_generation_strategy.hpp"
-#include "./obstacle_layout_strategy.hpp"
+#include "../common/randomization_context.hpp"
+#include "./strategy/edge_generation_strategy.hpp"
+#include "./strategy/obstacle_layout_strategy.hpp"
 #include "../world/validation.hpp"
-#include "../world/world_model.hpp"
+#include "../world/model.hpp"
 
 namespace skymapf::generator {
 
 /**
- * @brief Request object for connected world generation.
+ * @brief Options object for connected world generation.
  *
  * The generator always validates connectivity after obstacle placement.
  */
-struct WorldGenerationRequest {
+struct WorldGenerationOptions {
     /**
-     * @brief Constructs a request with default world shape and obstacle settings.
+     * @brief Constructs options with default world shape and obstacle settings.
      */
-    WorldGenerationRequest() = default;
+    WorldGenerationOptions() = default;
 
     /**
-     * @brief Constructs a request with explicit space and obstacle settings.
+     * @brief Constructs options with explicit space and obstacle settings.
      *
      * @param spec Discrete world dimensions.
      * @param obstacle Density and randomization parameters.
      */
-    explicit WorldGenerationRequest(
+    explicit WorldGenerationOptions(
         common::SpaceSpec spec,
         ObstacleDensityConfig obstacle = {}
     )
         : space_spec(std::move(spec)), obstacle_config(obstacle) {}
 
     /**
-     * @brief Constructs a request with explicit space, settings, and strategy.
+     * @brief Constructs options with explicit space, settings, and strategy.
      *
      * @param spec Discrete world dimensions.
      * @param obstacle Density and randomization parameters.
      * @param strategy Obstacle generation strategy object.
      */
-    WorldGenerationRequest(
+    WorldGenerationOptions(
         common::SpaceSpec spec,
         ObstacleDensityConfig obstacle,
         std::shared_ptr<IObstacleLayoutStrategy> strategy
@@ -55,14 +58,14 @@ struct WorldGenerationRequest {
           obstacle_strategy(std::move(strategy)) {}
 
     /**
-     * @brief Constructs a request with explicit space, obstacle, and edge strategies.
+     * @brief Constructs options with explicit space, obstacle, and edge strategies.
      *
      * @param spec Discrete world dimensions.
      * @param obstacle Density and randomization parameters.
      * @param obstacle_gen Obstacle generation strategy object.
      * @param edge_gen Edge generation strategy object.
      */
-    WorldGenerationRequest(
+    WorldGenerationOptions(
         common::SpaceSpec spec,
         ObstacleDensityConfig obstacle,
         std::shared_ptr<IObstacleLayoutStrategy> obstacle_gen,
@@ -75,6 +78,12 @@ struct WorldGenerationRequest {
 
     /// Discrete world dimensions used for generation.
     common::SpaceSpec space_spec{common::SpaceSpec::make_2d(16, 16)};
+    /// Optional explicit world id. When missing, generator auto-completes it.
+    std::optional<common::WorldId> world_id;
+    /// Optional explicit world name. When missing, generator auto-completes it.
+    std::optional<std::string> world_name;
+    /// Optional unified randomization context. When missing, legacy seed/default behavior is used.
+    std::optional<common::RandomizationContext> randomization;
     /// Obstacle density and random seed controls.
     ObstacleDensityConfig obstacle_config{};
     /// Optional obstacle strategy; default connected-carving strategy is used when null.
@@ -89,13 +98,13 @@ struct WorldGenerationRequest {
 class WorldGenerator {
 public:
     /**
-     * @brief Generates one validated connected world from request settings.
+     * @brief Generates one validated connected world from options.
      *
-     * @param request World generation options and strategy objects.
+     * @param options World generation options and strategy objects.
      * @return Generated world model.
      * @throws std::runtime_error If obstacle placement fails or connectivity validation fails.
      */
-    static world::WorldModel generate(const WorldGenerationRequest& request);
+    static world::WorldModel generate(const WorldGenerationOptions& options);
 };
 
 }  // namespace skymapf::generator

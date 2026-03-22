@@ -1,39 +1,66 @@
 /**
  * @file scenario_generator.hpp
- * @brief Defines conversion helpers from scenario models to executable instances.
+ * @brief Defines orchestration helpers for world/task/scenario generation.
  */
 #pragma once
 
+#include <optional>
+#include <string>
+#include <utility>
 #include <vector>
 
-#include "../common/ids.hpp"
-#include "../instance/instance.hpp"
-#include "../scenario/scenario.hpp"
+#include "../common/randomization_context.hpp"
+#include "../scenario/model.hpp"
+#include "./world_generator.hpp"
+#include "./task_generator.hpp"
+
 
 namespace skymapf::generator {
 
-/// Backward-compatible alias for legacy naming.
-using ScenarioCollection = scenario::ScenarioModel;
+/**
+ * @brief Options object for one-step scenario generation.
+ */
+struct ScenarioGeneratorOptions {
+    WorldGenerationOptions world_gen_options{};
+    std::vector<TaskGenerationOptions> tasks_gen_options{};
+    std::optional<common::ScenarioId> scenario_id;
+    std::optional<std::string> scenario_name;
+    std::optional<common::RandomizationContext> randomization;
 
-/// Options controlling instance id allocation.
-struct InstanceGenerationOptions {
-    common::InstanceId first_instance_id{1};
+    /**
+     * @brief Constructs options with default world/task generation settings.
+     */
+    ScenarioGeneratorOptions() = default;
+
+    /**
+     * @brief Constructs options with explicit world and task generation options.
+     *
+     * @param world_options World generation options.
+     * @param task_options Task generation options.
+     */
+    ScenarioGeneratorOptions(
+        WorldGenerationOptions world_options,
+        std::vector<TaskGenerationOptions> tasks_options
+    )
+        : world_gen_options(std::move(world_options)),
+          tasks_gen_options(std::move(tasks_options)) {}
 };
 
-/// Utility that converts one scenario model into executable instances.
+/// Utility that orchestrates one-step scenario generation.
 class ScenarioGenerator {
 public:
     /**
-     * @brief Builds one executable instance per task using a shared world definition.
+     * @brief Generates one scenario model by chaining world and task generation.
      *
-     * @param scenario_model Scenario model containing world and task set.
-     * @param options Instance id allocation options.
-     * @return Instance list preserving task order.
+     * Flow:
+     * 1. Generate world from world_gen_options.
+     * 2. Generate one task from task_gen_options.
+     * 3. Pack world and task into one ScenarioModel.
+     *
+     * @param options Scenario generation options.
+     * @return Generated scenario model.
      */
-    static std::vector<instance::InstanceModel> generate(
-        const scenario::ScenarioModel& scenario_model,
-        InstanceGenerationOptions options = {}
-    );
+    static scenario::ScenarioModel generate(const ScenarioGeneratorOptions& options);
 };
 
 }  // namespace skymapf::generator

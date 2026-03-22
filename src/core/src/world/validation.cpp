@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <queue>
 #include <vector>
-#include "skymapf/world/world_model.hpp"
+#include "skymapf/world/model.hpp"
 
 namespace skymapf::world {
 

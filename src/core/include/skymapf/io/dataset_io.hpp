@@ -10,10 +10,10 @@
 #include <string>
 #include <vector>
 
-#include "../instance/instance.hpp"
-#include "../scenario/scenario.hpp"
-#include "../task/task_model.hpp"
-#include "../world/world_model.hpp"
+#include "../instance/model.hpp"
+#include "../scenario/model.hpp"
+#include "../task/model.hpp"
+#include "../world/model.hpp"
 
 namespace skymapf::io {
 

@@ -8,9 +8,15 @@
 #include <utility>
 
 #include "skymapf/common/ids.hpp"
-#include "skymapf/task/task_model.hpp"
-#include "skymapf/task/task_runtime.hpp"
-#include "skymapf/world/world_model.hpp"
+#include "skymapf/task/model.hpp"
+#include "skymapf/task/runtime.hpp"
+#include "skymapf/utils/default_naming.hpp"
+#include "skymapf/utils/id_generator.hpp"
+#include "skymapf/world/model.hpp"
+
+namespace skymapf::scenario {
+class ScenarioModel;
+}
 
 namespace skymapf::instance {
 
@@ -21,7 +27,11 @@ namespace skymapf::instance {
  */
 class InstanceModel {
 public:
-    InstanceModel() = default;
+    InstanceModel()
+        : id_(utils::IdGenerator::next_instance_id()),
+          name_(utils::DefaultNaming::instance_name(id_)),
+          world_(),
+          task_() {}
 
     InstanceModel(
         common::InstanceId instance_id,
@@ -29,10 +39,10 @@ public:
         task::TaskModel task,
         std::string name = {}
     )
-        : instance_id_(instance_id),
+        : id_(instance_id),
+          name_(name.empty() ? utils::DefaultNaming::instance_name(instance_id) : std::move(name)),
           world_(std::move(world)),
-          task_(std::move(task)),
-          name_(std::move(name)) {}
+          task_(std::move(task)) {}
 
     static InstanceModel create(
         common::InstanceId instance_id,
@@ -48,10 +58,11 @@ public:
         );
     }
 
-    common::InstanceId instance_id() const noexcept { return instance_id_; }
-    void set_instance_id(common::InstanceId instance_id) noexcept { instance_id_ = instance_id; }
+    const common::InstanceId& id() const noexcept { return id_; }
+    void set_id(common::InstanceId instance_id) noexcept { id_ = instance_id; }
 
     const std::string& name() const noexcept { return name_; }
+    bool has_name() const noexcept { return !name_.empty(); }
     void set_name(std::string name) { name_ = std::move(name); }
 
     const world::WorldModel& world() const noexcept { return world_; }
@@ -62,11 +73,25 @@ public:
     task::TaskModel& task() noexcept { return task_; }
     void set_task(task::TaskModel task) { task_ = std::move(task); }
 
+    /**
+     * @brief Converts this instance into a single-task scenario.
+     *
+     * The resulting scenario keeps the same world and stores exactly one task.
+     *
+     * @param scenario_id Output scenario id.
+     * @param scenario_name Optional output scenario name.
+     * @return Generated single-task scenario model.
+     */
+    scenario::ScenarioModel to_scenario(
+        common::ScenarioId scenario_id = 1,
+        std::string scenario_name = {}
+    ) const;
+
 private:
-    common::InstanceId instance_id_{0};
+    common::InstanceId id_;
+    std::string name_;
     world::WorldModel world_;
     task::TaskModel task_;
-    std::string name_;
 };
 
 /// Runtime payload bound to one executable instance.

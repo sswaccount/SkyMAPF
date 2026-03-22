@@ -6,7 +6,7 @@
 
 #include <cstdint>
 
-#include "../world/world_model.hpp"
+#include "skymapf/world/model.hpp"
 
 namespace skymapf::generator {
 

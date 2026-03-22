@@ -8,4 +8,4 @@
 #include "./connectivity.hpp"
 #include "./occupancy.hpp"
 #include "./validation.hpp"
-#include "./world_model.hpp"
+#include "./model.hpp"

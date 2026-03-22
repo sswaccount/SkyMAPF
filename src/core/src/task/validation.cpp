@@ -8,7 +8,8 @@
 #include <unordered_set>
 #include <utility>
 
-#include "skymapf/world/world_model.hpp"
+#include "skymapf/generator/task_generator.hpp"
+#include "skymapf/world/model.hpp"
 
 namespace skymapf::task {
 
@@ -18,10 +19,11 @@ void add_issue(
     TaskValidationResult& result,
     TaskValidationCode code,
     common::TaskId task_id,
-    std::string message
+    std::string message,
+    std::optional<std::size_t> agent_index = std::nullopt
 ) {
     result.ok = false;
-    result.issues.push_back(TaskValidationIssue{code, task_id, std::move(message)});
+    result.issues.push_back(TaskValidationIssue{code, task_id, std::move(message), agent_index});
 }
 
 }  // namespace
@@ -105,7 +107,9 @@ TaskValidationResult validate_tasks(
     std::unordered_set<common::AgentId> known_agents;
     known_agents.reserve(agents.size());
     for (const auto& agent : agents) {
-        known_agents.insert(agent.agent_id);
+        if (agent.id.has_value()) {
+            known_agents.insert(*agent.id);
+        }
     }
 
     std::unordered_set<common::AgentId> assigned_agents;
@@ -147,6 +151,93 @@ TaskValidationResult validate_tasks(
     }
 
     return aggregate;
+}
+
+TaskValidationResult validate_generated_task(
+    const TaskModel& task,
+    const world::WorldModel& world,
+    const generator::TaskGenerationOptions& options
+) {
+    TaskValidationResult result;
+
+    if (task.agent_count() != options.agent_count) {
+        add_issue(
+            result,
+            TaskValidationCode::GeneratedAgentCountMismatch,
+            task.task_id(),
+            "Generated agent count does not match requested agent_count."
+        );
+    }
+
+    const auto& assignments = task.agent_sequences();
+    for (std::size_t i = 0; i < assignments.size(); ++i) {
+        const auto& assignment = assignments[i];
+        if (assignment.start_time > options.max_start_time) {
+            add_issue(
+                result,
+                TaskValidationCode::GeneratedInvalidStartTimeRange,
+                task.task_id(),
+                "Agent start_time is outside [0, max_start_time].",
+                i
+            );
+        }
+
+        const auto seq_size = assignment.visit_sequence.checkpoints.size();
+        if (seq_size < 2) {
+            add_issue(
+                result,
+                TaskValidationCode::NotEnoughCheckpoints,
+                task.task_id(),
+                "Visit sequence length is smaller than domain minimum (2).",
+                i
+            );
+            continue;
+        }
+        if (seq_size > options.max_sequence_size) {
+            add_issue(
+                result,
+                TaskValidationCode::GeneratedSequenceTooLong,
+                task.task_id(),
+                "Visit sequence length exceeds max_sequence_size.",
+                i
+            );
+        }
+
+        const auto start_cell = assignment.visit_sequence.start();
+        if (!world.is_valid_index(start_cell) || !world.is_walkable(start_cell)) {
+            add_issue(
+                result,
+                TaskValidationCode::GeneratedInvalidStartCell,
+                task.task_id(),
+                "Visit sequence start cell is invalid or non-walkable.",
+                i
+            );
+        }
+
+        for (const auto checkpoint : assignment.visit_sequence.checkpoints) {
+            if (!world.is_valid_index(checkpoint)) {
+                add_issue(
+                    result,
+                    TaskValidationCode::InvalidCellIndex,
+                    task.task_id(),
+                    "Visit sequence contains checkpoint outside world bounds.",
+                    i
+                );
+                continue;
+            }
+            if (!world.is_walkable(checkpoint)) {
+                add_issue(
+                    result,
+                    TaskValidationCode::NonWalkableCheckpoint,
+                    task.task_id(),
+                    "Visit sequence contains non-walkable checkpoint.",
+                    i
+                );
+            }
+        }
+    }
+
+    return result;
 }
 
 }  // namespace skymapf::task

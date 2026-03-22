@@ -1,5 +1,5 @@
 /**
- * @file task_policy.hpp
+ * @file policy.hpp
  * @brief Defines static execution policies attached to task assignments.
  */
 #pragma once

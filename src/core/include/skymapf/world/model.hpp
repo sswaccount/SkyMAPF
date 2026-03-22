@@ -1,10 +1,13 @@
 /**
- * @file world_model.hpp
+ * @file model.hpp
  * @brief Defines the mutable discrete world model used by planning.
  */
 #pragma once
 
 #include <functional>
+#include <optional>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "../common/coord.hpp"
@@ -36,12 +39,28 @@ public:
      * @param space_spec Discrete world dimensions.
      * @param occupancy_factory Factory for creating occupancy storage.
      * @param connectivity_factory Factory for creating connectivity policy.
+     * @param id Optional explicit world id; auto-generated when missing.
+     * @param name Optional explicit world display name; auto-generated when missing.
      */
     explicit WorldModel(
         common::SpaceSpec space_spec,
         OccupancyFactory occupancy_factory = {},
-        ConnectivityFactory connectivity_factory = {}
+        ConnectivityFactory connectivity_factory = {},
+        std::optional<common::WorldId> id = std::nullopt,
+        std::optional<std::string> name = std::nullopt
     );
+
+    /// Returns stable world id for program references and serialization.
+    const common::WorldId& id() const noexcept { return id_; }
+    /// Sets world id (primarily for migration and import workflows).
+    void set_id(common::WorldId id) noexcept { id_ = id; }
+
+    /// Returns display name for logging and export.
+    const std::string& name() const noexcept { return name_; }
+    /// Returns whether display name is non-empty.
+    bool has_name() const noexcept { return !name_.empty(); }
+    /// Sets display name.
+    void set_name(std::string name) { name_ = std::move(name); }
 
     /// Returns current discrete world dimensions.
     const common::SpaceSpec& space_spec() const noexcept { return space_spec_; }
@@ -122,6 +141,8 @@ public:
     bool has_directed_edge(const common::CellCoord3D& from, const common::CellCoord3D& to) const noexcept;
 
 private:
+    common::WorldId id_;
+    std::string name_;
     common::SpaceSpec space_spec_;
     OccupancyFactory occupancy_factory_;
     ConnectivityFactory connectivity_factory_;

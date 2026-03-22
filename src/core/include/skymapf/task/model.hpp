@@ -1,5 +1,5 @@
 /**
- * @file task_model.hpp
+ * @file model.hpp
  * @brief Defines route/task data models and the task aggregate class.
  */
 #pragma once
@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "skymapf/common/ids.hpp"
-#include "skymapf/task/task_policy.hpp"
+#include "skymapf/task/policy.hpp"
 
 namespace skymapf::task {
 
@@ -41,28 +41,23 @@ struct SingleAgentTaskModel {
 };
 
 /**
- * @brief Defines one multi-agent task payload.
- */
-struct MultiAgentTaskModel {
-    common::TaskId task_id{0};
-    std::string name;
-    std::vector<SingleAgentTaskModel> agent_sequences;
-};
-
-/**
  * @brief Mutable multi-agent task aggregate with helper APIs.
  */
 class TaskModel {
 public:
-    TaskModel() = default;
+    TaskModel();
     explicit TaskModel(common::TaskId task_id, std::string name = {});
 
     static TaskModel create(common::TaskId task_id, std::string name = {});
+
+    const common::TaskId& id() const noexcept;
+    void set_id(common::TaskId task_id) noexcept;
 
     common::TaskId task_id() const noexcept;
     void set_task_id(common::TaskId task_id) noexcept;
 
     const std::string& name() const noexcept;
+    bool has_name() const noexcept;
     void set_name(std::string name);
 
     bool is_available(common::TimeStep now) const noexcept;
@@ -94,7 +89,9 @@ public:
 private:
     std::optional<std::size_t> find_index(common::AgentId agent_id) const noexcept;
 
-    MultiAgentTaskModel data_;
+    common::TaskId id_;
+    std::string name_;
+    std::vector<SingleAgentTaskModel> agent_tasks;
 };
 
 }  // namespace skymapf::task

@@ -1,40 +1,105 @@
 /**
  * @file task_generator.hpp
- * @brief Defines task generation request/result models and generator APIs.
+ * @brief Defines options and APIs for procedural task generation.
  */
 #pragma once
 
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "skymapf/generator/route_sampling_strategy.hpp"
-#include "../task/task_model.hpp"
-#include "../world/world_model.hpp"
+#include "skymapf/common/ids.hpp"
+#include "skymapf/common/randomization_context.hpp"
+#include "skymapf/generator/strategy/route_sampling_strategy.hpp"
+#include "skymapf/task/model.hpp"
+#include "../world/model.hpp"
 
 namespace skymapf::generator {
 
-/// Input parameters for constructing one multi-agent task.
-struct TaskGenerationRequest {
-    common::TaskId task_id{1};
-    std::vector<common::AgentId> agent_ids;
-    std::size_t waypoint_count_per_agent{0};
-    common::TimeStep start_time{0};
-    std::string name;
-    std::uint64_t random_seed{0};
-    std::shared_ptr<IRouteSamplingStrategy> route_strategy;
-};
+/**
+ * @brief Options object for multi-agent task generation.
+ *
+ * The generator enforces sequence-length and start-time constraints.
+ */
+struct TaskGenerationOptions {
+    /**
+     * @brief Constructs options with default task generation settings.
+     */
+    TaskGenerationOptions() = default;
 
-/// Input parameters for constructing a family of tasks from one world.
-struct TaskFamilyGenerationRequest {
-    TaskGenerationRequest base_request;
-    std::size_t task_count{1};
-    common::TaskId first_task_id{1};
-    common::TimeStep first_start_time{0};
-    common::TimeStep start_time_step{1};
-    std::string name_prefix{"task_"};
+    /**
+     * @brief Constructs options with explicit agent count and random seed.
+     *
+     * @param count Number of agents to generate in one task.
+     * @param seed Random seed used by generation routines.
+     */
+    explicit TaskGenerationOptions(
+        std::size_t count,
+        std::uint64_t seed = 0
+    )
+        : agent_count(count), random_seed(seed) {}
+
+    /**
+     * @brief Constructs options with explicit sequence and start-time constraints.
+     *
+     * @param count Number of agents to generate in one task.
+     * @param seed Random seed used by generation routines.
+     * @param max_seq_size Maximum allowed visit-sequence size per agent.
+     * @param max_start Latest allowed start time for generated agents.
+     */
+    TaskGenerationOptions(
+        std::size_t count,
+        std::uint64_t seed,
+        std::uint32_t max_seq_size,
+        common::TimeStep max_start
+    )
+        : agent_count(count),
+          random_seed(seed),
+          max_sequence_size(max_seq_size),
+          max_start_time(max_start) {}
+
+    /**
+     * @brief Constructs options with explicit route-sampling strategy.
+     *
+     * @param count Number of agents to generate in one task.
+     * @param seed Random seed used by generation routines.
+     * @param max_seq_size Maximum allowed visit-sequence size per agent.
+     * @param max_start Latest allowed start time for generated agents.
+     * @param sampling_strategy Route sampling strategy object.
+     */
+    TaskGenerationOptions(
+        std::size_t count,
+        std::uint64_t seed,
+        std::uint32_t max_seq_size,
+        common::TimeStep max_start,
+        std::shared_ptr<IRouteSamplingStrategy> sampling_strategy
+    )
+        : agent_count(count),
+          random_seed(seed),
+          max_sequence_size(max_seq_size),
+          max_start_time(max_start),
+          route_sampling_strategy(std::move(sampling_strategy)) {}
+
+    /// Number of agents to generate in one task.
+    std::size_t agent_count{1};
+    /// Optional explicit task id. When missing, generator auto-completes it.
+    std::optional<common::TaskId> task_id;
+    /// Optional explicit task name. When missing, generator auto-completes it.
+    std::optional<std::string> task_name;
+    /// Optional unified randomization context. When missing, legacy seed/default behavior is used.
+    std::optional<common::RandomizationContext> randomization;
+    /// Random seed controlling deterministic generation behavior.
+    std::uint64_t random_seed{0};
+    /// Maximum allowed visit-sequence size for each generated agent.
+    std::uint32_t max_sequence_size{2};
+    /// Maximum allowed generated start time for each agent.
+    common::TimeStep max_start_time{0};
+    /// Optional route sampling strategy; default strategy is used when null.
+    std::shared_ptr<IRouteSamplingStrategy> route_sampling_strategy;
 };
 
 /// Utility for producing multi-agent tasks from world state.
@@ -44,37 +109,30 @@ public:
      * @brief Generates one multi-agent task using the provided strategy.
      *
      * @param world World used as route sampling domain.
-     * @param request Task generation options and agent set.
+     * @param options Task generation options.
      * @return Generated task object.
+     * @throws std::invalid_argument If options are invalid.
+     * @throws std::runtime_error If generation or validation fails.
      */
     static task::TaskModel generate(
         const world::WorldModel& world,
-        const TaskGenerationRequest& request
+        const TaskGenerationOptions& options
     );
 
     /**
-     * @brief Generates multiple tasks from one world using a shared base request.
+     * @brief Generates multiple tasks by applying one options item per task.
      *
      * @param world World used as route sampling domain.
-     * @param request Task-family generation options.
-     * @return Generated task list.
+     * @param options Task generation options list.
+     * @return Generated task list preserving input options order.
+     * @throws std::invalid_argument If options list is empty.
+     * @throws std::runtime_error If any task generation or validation fails.
      */
-    static std::vector<task::TaskModel> generate_family(
+    static std::vector<task::TaskModel> generate(
         const world::WorldModel& world,
-        const TaskFamilyGenerationRequest& request
+        const std::vector<TaskGenerationOptions>& options
     );
 
-    /**
-     * @brief Generates multiple tasks from one world using per-task requests.
-     *
-     * @param world World used as route sampling domain.
-     * @param requests Explicit request list, one item per task.
-     * @return Generated task list.
-     */
-    static std::vector<task::TaskModel> generate_family(
-        const world::WorldModel& world,
-        const std::vector<TaskGenerationRequest>& requests
-    );
 };
 
 }  // namespace skymapf::generator
