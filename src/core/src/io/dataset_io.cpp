@@ -6,11 +6,14 @@
 
 #include <fstream>
 #include <iomanip>
+#include <memory>
 #include <sstream>
 
 #include <nlohmann/json.hpp>
 
 #include "skymapf/common/space.hpp"
+#include "skymapf/generator/scenario_generator.hpp"
+#include "skymapf/world/occupancy.hpp"
 
 namespace skymapf::io {
 
@@ -34,32 +37,22 @@ std::string fnv1a64_hex(std::string_view text) {
     return oss.str();
 }
 
-std::string status_to_string(task::AgentTaskStatus status) {
-    switch (status) {
-    case task::AgentTaskStatus::Pending:
-        return "pending";
-    case task::AgentTaskStatus::Active:
-        return "active";
-    case task::AgentTaskStatus::Completed:
-        return "completed";
-    case task::AgentTaskStatus::Failed:
-        return "failed";
+std::string goal_behavior_to_string(task::GoalArrivalBehavior behavior) {
+    switch (behavior) {
+    case task::GoalArrivalBehavior::DisappearAtGoal:
+        return "disappear_at_goal";
+    case task::GoalArrivalBehavior::StayAtGoal:
+        return "stay_at_goal";
     default:
-        return "pending";
+        return "stay_at_goal";
     }
 }
 
-task::AgentTaskStatus task_status_from_string(const std::string& text) {
-    if (text == "active") {
-        return task::AgentTaskStatus::Active;
+task::GoalArrivalBehavior goal_behavior_from_string(const std::string& text) {
+    if (text == "disappear_at_goal") {
+        return task::GoalArrivalBehavior::DisappearAtGoal;
     }
-    if (text == "completed") {
-        return task::AgentTaskStatus::Completed;
-    }
-    if (text == "failed") {
-        return task::AgentTaskStatus::Failed;
-    }
-    return task::AgentTaskStatus::Pending;
+    return task::GoalArrivalBehavior::StayAtGoal;
 }
 
 json world_to_json(const world::WorldModel& world_model) {
@@ -110,7 +103,16 @@ std::optional<world::WorldModel> world_from_json(const json& j, std::string* err
         return std::nullopt;
     }
 
-    world::WorldModel world_model(spec, false);
+    world::WorldModel world_model(
+        spec,
+        [](common::CellIndex cell_count) {
+            auto occupancy = std::make_shared<world::DefaultOccupancyStore>(cell_count);
+            for (common::CellIndex index = 0; index < occupancy->cell_count(); ++index) {
+                occupancy->set_walkable(index, false);
+            }
+            return occupancy;
+        }
+    );
     if (!j.contains("walkable_indices") || !j.at("walkable_indices").is_array()) {
         if (error_message) {
             *error_message = "world.json missing array 'walkable_indices'.";
@@ -126,7 +128,7 @@ std::optional<world::WorldModel> world_from_json(const json& j, std::string* err
     return world_model;
 }
 
-json task_to_json(const task::Task& task_data) {
+json task_to_json(const task::TaskModel& task_data) {
     json j;
     j["task_id"] = task_data.task_id();
     j["name"] = task_data.name();
@@ -136,7 +138,7 @@ json task_to_json(const task::Task& task_data) {
         sequences.push_back({
             {"agent_id", seq.agent_id},
             {"start_time", seq.start_time},
-            {"status", status_to_string(seq.status)},
+            {"goal_behavior", goal_behavior_to_string(seq.goal_behavior)},
             {"checkpoints", seq.visit_sequence.checkpoints},
         });
     }
@@ -144,14 +146,14 @@ json task_to_json(const task::Task& task_data) {
     return j;
 }
 
-std::optional<task::Task> task_from_json(const json& j, std::string* error_message) {
+std::optional<task::TaskModel> task_from_json(const json& j, std::string* error_message) {
     if (!j.contains("task_id")) {
         if (error_message) {
             *error_message = "task entry missing 'task_id'.";
         }
         return std::nullopt;
     }
-    task::Task task_data = task::Task::create(
+    task::TaskModel task_data = task::TaskModel::create(
         j.at("task_id").get<common::TaskId>(),
         j.value("name", std::string{})
     );
@@ -165,11 +167,14 @@ std::optional<task::Task> task_from_json(const json& j, std::string* error_messa
     for (const auto& seq : j.at("agent_sequences")) {
         const auto agent_id = seq.at("agent_id").get<common::AgentId>();
         const auto start_time = seq.value("start_time", static_cast<common::TimeStep>(0));
-        const auto status = task_status_from_string(seq.value("status", std::string{"pending"}));
+        task::GoalArrivalBehavior goal_behavior = task::GoalArrivalBehavior::StayAtGoal;
+        if (seq.contains("goal_behavior")) {
+            goal_behavior = goal_behavior_from_string(seq.value("goal_behavior", std::string{"stay_at_goal"}));
+        }
         const auto checkpoints = seq.at("checkpoints").get<std::vector<common::CellIndex>>();
-        task::VisitSequence visit_sequence;
+        task::SequenceModel visit_sequence;
         visit_sequence.checkpoints = checkpoints;
-        task_data.upsert_agent_sequence(agent_id, std::move(visit_sequence), start_time, status);
+        task_data.upsert_agent_sequence(agent_id, std::move(visit_sequence), start_time, goal_behavior);
     }
     return task_data;
 }
@@ -284,7 +289,7 @@ std::optional<DatasetReadResult> DatasetIO::read_dataset(
         return std::nullopt;
     }
 
-    std::vector<task::Task> tasks;
+    std::vector<task::TaskModel> tasks;
     tasks.reserve(tasks_json->size());
     for (const auto& task_item : *tasks_json) {
         auto parsed_task = task_from_json(task_item, error_message);
@@ -311,40 +316,43 @@ std::optional<DatasetReadResult> DatasetIO::read_dataset(
     return result;
 }
 
-std::vector<scenario::Scenario> DatasetIO::make_scenarios(
+scenario::ScenarioModel DatasetIO::make_scenario_model(
     const DatasetData& data,
-    common::ScenarioId first_scenario_id
+    common::ScenarioId scenario_id,
+    std::string name
 ) {
-    std::vector<scenario::Scenario> scenarios;
-    scenarios.reserve(data.tasks.size());
-    common::ScenarioId scenario_id = first_scenario_id;
-    for (const auto& task_data : data.tasks) {
-        common::TimeStep time = 0;
-        const auto earliest = task_data.earliest_start_time();
-        if (earliest.has_value() && *earliest != 0) {
-            time = *earliest;
-        }
-        scenarios.push_back(scenario::Scenario::create(
-            scenario_id++,
-            data.world,
-            task_data,
-            time,
-            task_data.name()
-        ));
+    if (name.empty()) {
+        name = data.meta.dataset_name;
     }
-    return scenarios;
+    return scenario::ScenarioModel::create(
+        scenario_id,
+        data.world,
+        data.tasks,
+        std::move(name)
+    );
 }
 
-std::optional<std::vector<scenario::Scenario>> DatasetIO::read_dataset_as_scenarios(
+std::vector<instance::InstanceModel> DatasetIO::make_instances(
+    const DatasetData& data,
+    common::InstanceId first_instance_id
+) {
+    const auto scenario_model = make_scenario_model(data);
+    return generator::ScenarioGenerator::generate(
+        scenario_model,
+        generator::InstanceGenerationOptions{first_instance_id}
+    );
+}
+
+std::optional<std::vector<instance::InstanceModel>> DatasetIO::read_dataset_as_instances(
     const std::filesystem::path& directory,
-    common::ScenarioId first_scenario_id,
+    common::InstanceId first_instance_id,
     std::string* error_message
 ) {
     auto dataset = read_dataset(directory, error_message);
     if (!dataset.has_value()) {
         return std::nullopt;
     }
-    return make_scenarios(dataset->data, first_scenario_id);
+    return make_instances(dataset->data, first_instance_id);
 }
 
 }  // namespace skymapf::io

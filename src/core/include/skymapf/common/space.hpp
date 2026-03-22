@@ -6,6 +6,8 @@
 
 #include <cstdint>
 
+#include "ids.hpp"
+
 namespace skymapf::common {
 
 /// Classifies whether a world uses 2D or 3D discrete space.
@@ -91,4 +93,23 @@ inline bool is_valid(GridShape3D shape) noexcept {
     return shape.cols > 0 && shape.rows > 0 && shape.layers > 0;
 }
 
+/**
+ * @brief Returns total cell count represented by a space specification.
+ *
+ * Invalid space specifications return zero.
+ */
+inline CellIndex cell_count(const SpaceSpec& spec) noexcept {
+    if (!spec.is_valid()) {
+        return 0;
+    }
+    if (spec.is_2d()) {
+        const auto shape = spec.shape_2d();
+        return static_cast<CellIndex>(shape.cols) * static_cast<CellIndex>(shape.rows);
+    }
+    const auto shape = spec.shape_3d();
+    return static_cast<CellIndex>(shape.cols)
+         * static_cast<CellIndex>(shape.rows)
+         * static_cast<CellIndex>(shape.layers);
 }
+
+}  // namespace skymapf::common

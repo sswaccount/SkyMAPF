@@ -1,63 +1,62 @@
 /**
  * @file scenario.hpp
- * @brief Defines the scenario object that binds world, task, and time.
+ * @brief Defines static scenario model that binds world and multiple tasks.
  */
 #pragma once
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "../common/ids.hpp"
-#include "../task/task.hpp"
+#include "../task/task_model.hpp"
 #include "../world/world_model.hpp"
+
+namespace skymapf::instance {
+class InstanceModel;
+}
 
 namespace skymapf::scenario {
 
 /**
- * @brief Represents one executable scenario instance.
+ * @brief Represents one static scenario data model.
  *
- * A scenario owns one world and one task together with the current
- * simulation time used by runtime and solver pipelines.
+ * A scenario contains one world and multiple task definitions.
  */
-class Scenario {
+class ScenarioModel {
 public:
-    Scenario() = default;
+    ScenarioModel() = default;
 
     /**
-     * @brief Constructs a scenario object with explicit ownership.
+     * @brief Constructs a scenario model with explicit ownership.
      *
-     * @param scenario_id Identifier of the scenario instance.
+     * @param scenario_id Identifier of the scenario.
      * @param world World definition copied into the scenario.
-     * @param task Task definition copied into the scenario.
-     * @param current_time Initial simulation time.
+     * @param tasks Task definitions copied into the scenario.
      * @param name Optional scenario display name.
      */
-    Scenario(
+    ScenarioModel(
         common::ScenarioId scenario_id,
         world::WorldModel world,
-        task::Task task,
-        common::TimeStep current_time = 0,
+        std::vector<task::TaskModel> tasks,
         std::string name = {}
     )
         : scenario_id_(scenario_id),
           world_(std::move(world)),
-          task_(std::move(task)),
-          current_time_(current_time),
+          tasks_(std::move(tasks)),
           name_(std::move(name)) {}
 
-    /// Creates a scenario using value semantics.
-    static Scenario create(
+    /// Creates a scenario model using value semantics.
+    static ScenarioModel create(
         common::ScenarioId scenario_id,
         world::WorldModel world,
-        task::Task task,
-        common::TimeStep current_time = 0,
+        std::vector<task::TaskModel> tasks,
         std::string name = {}
     ) {
-        return Scenario(
+        return ScenarioModel(
             scenario_id,
             std::move(world),
-            std::move(task),
-            current_time,
+            std::move(tasks),
             std::move(name)
         );
     }
@@ -79,30 +78,31 @@ public:
     /// Replaces the owned world by value.
     void set_world(world::WorldModel world) { world_ = std::move(world); }
 
-    /// Returns the owned task (const view).
-    const task::Task& task() const noexcept { return task_; }
-    /// Returns the owned task (mutable view).
-    task::Task& task() noexcept { return task_; }
-    /// Replaces the owned task by value.
-    void set_task(task::Task task) { task_ = std::move(task); }
+    /// Returns the owned tasks (const view).
+    const std::vector<task::TaskModel>& tasks() const noexcept { return tasks_; }
+    /// Returns the owned tasks (mutable view).
+    std::vector<task::TaskModel>& tasks() noexcept { return tasks_; }
+    /// Replaces the owned tasks by value.
+    void set_tasks(std::vector<task::TaskModel> tasks) { tasks_ = std::move(tasks); }
+    /// Clears all tasks.
+    void clear_tasks() { tasks_.clear(); }
+    /// Appends one task.
+    void add_task(task::TaskModel task) { tasks_.push_back(std::move(task)); }
 
-    /// Returns current scenario time.
-    common::TimeStep current_time() const noexcept { return current_time_; }
-    /// Sets current scenario time.
-    void set_current_time(common::TimeStep time_step) noexcept { current_time_ = time_step; }
-    /// Advances scenario time by @p delta ticks.
-    void advance_time(common::TimeStep delta = 1) noexcept { current_time_ += delta; }
-
-    /// Returns whether the task is available at current scenario time.
-    bool is_task_available() const noexcept {
-        return task_.is_available(current_time_);
-    }
+    /**
+     * @brief Exports one executable instance per task.
+     *
+     * @param first_instance_id First instance id in generated output.
+     * @return Generated executable instances preserving task order.
+     */
+    std::vector<instance::InstanceModel> export_instances(
+        common::InstanceId first_instance_id = 1
+    ) const;
 
 private:
     common::ScenarioId scenario_id_{0};
     world::WorldModel world_;
-    task::Task task_;
-    common::TimeStep current_time_{0};
+    std::vector<task::TaskModel> tasks_;
     std::string name_;
 };
 

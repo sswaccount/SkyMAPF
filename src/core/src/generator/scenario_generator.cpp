@@ -1,36 +1,28 @@
 /**
  * @file scenario_generator.cpp
- * @brief Implements conversion from world/task collections to scenarios.
+ * @brief Implements conversion from scenario models to executable instances.
  */
 #include "skymapf/generator/scenario_generator.hpp"
 
 namespace skymapf::generator {
 
-std::vector<scenario::Scenario> ScenarioGenerator::build_scenarios(
-    const ScenarioCollection& collection,
-    ScenarioBuildOptions options
+std::vector<instance::InstanceModel> ScenarioGenerator::generate(
+    const scenario::ScenarioModel& scenario_model,
+    InstanceGenerationOptions options
 ) {
-    std::vector<scenario::Scenario> scenarios;
-    scenarios.reserve(collection.tasks().size());
+    std::vector<instance::InstanceModel> instances;
+    instances.reserve(scenario_model.tasks().size());
 
-    auto scenario_id = options.first_scenario_id;
-    for (const auto& task_data : collection.tasks()) {
-        common::TimeStep start_time = 0;
-        if (options.use_agent_start_time_as_start_time) {
-            const auto earliest = task_data.earliest_start_time();
-            if (earliest.has_value()) {
-                start_time = *earliest;
-            }
-        }
-        scenarios.push_back(scenario::Scenario::create(
-            scenario_id++,
-            collection.world(),
+    auto instance_id = options.first_instance_id;
+    for (const auto& task_data : scenario_model.tasks()) {
+        instances.push_back(instance::InstanceModel::create(
+            instance_id++,
+            scenario_model.world(),
             task_data,
-            start_time,
             task_data.name()
         ));
     }
-    return scenarios;
+    return instances;
 }
 
 }  // namespace skymapf::generator

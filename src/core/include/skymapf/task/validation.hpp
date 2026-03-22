@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "../agent/agent.hpp"
-#include "task.hpp"
+#include "task_model.hpp"
 
 namespace skymapf::world {
 class WorldModel;
@@ -48,7 +48,7 @@ struct TaskValidationResult {
  * @param world World providing index bounds and walkability checks.
  * @return Validation result with issues when validation fails.
  */
-TaskValidationResult validate_task(const Task& task, const world::WorldModel& world);
+TaskValidationResult validate_task(const TaskModel& task, const world::WorldModel& world);
 
 /**
  * @brief Validates a task set with optional cross-task constraints.
@@ -60,7 +60,7 @@ TaskValidationResult validate_task(const Task& task, const world::WorldModel& wo
  * @return Aggregated validation result across all tasks.
  */
 TaskValidationResult validate_tasks(
-    const std::vector<Task>& tasks,
+    const std::vector<TaskModel>& tasks,
     const std::vector<agent::AgentSpec>& agents,
     const world::WorldModel& world,
     bool enforce_one_active_task_per_agent = true

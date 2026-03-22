@@ -1,11 +1,13 @@
 /**
  * @file task_generator.cpp
- * @brief Implements default sampling strategies for multi-agent task generation.
+ * @brief Implements multi-agent task generation.
  */
 #include "skymapf/generator/task_generator.hpp"
 
 #include <algorithm>
 #include <random>
+#include <stdexcept>
+#include <string>
 
 namespace skymapf::generator {
 
@@ -24,47 +26,17 @@ std::vector<common::CellIndex> collect_walkable_cells(const world::WorldModel& w
 
 }  // namespace
 
-task::VisitSequence RandomReachableRouteSamplingStrategy::sample(
-    const world::WorldModel& world_model,
-    common::CellIndex start,
-    std::size_t waypoint_count,
-    std::uint64_t random_seed
-) const {
-    task::VisitSequence seq;
-    if (!world_model.is_valid_index(start) || !world_model.is_walkable(start)) {
-        return seq;
-    }
-    auto walkable = collect_walkable_cells(world_model);
-    if (walkable.empty()) {
-        return seq;
-    }
-
-    std::mt19937_64 rng(random_seed);
-    std::uniform_int_distribution<std::size_t> pick(0, walkable.size() - 1);
-
-    seq.checkpoints.reserve(waypoint_count + 2);
-    seq.checkpoints.push_back(start);
-    for (std::size_t i = 0; i < waypoint_count; ++i) {
-        seq.checkpoints.push_back(walkable[pick(rng)]);
-    }
-    seq.checkpoints.push_back(walkable[pick(rng)]);
-    return seq;
-}
-
-TaskGenerationResult TaskGenerator::generate(
+task::TaskModel TaskGenerator::generate(
     const world::WorldModel& world_model,
     const TaskGenerationRequest& request
 ) {
-    TaskGenerationResult result;
     if (request.agent_ids.empty()) {
-        result.error_message = "Task generation requires at least one agent id.";
-        return result;
+        throw std::invalid_argument("Task generation requires at least one agent id.");
     }
 
     auto walkable = collect_walkable_cells(world_model);
     if (walkable.empty()) {
-        result.error_message = "World has no walkable cell for task generation.";
-        return result;
+        throw std::runtime_error("World has no walkable cell for task generation.");
     }
 
     auto route_strategy = request.route_strategy;
@@ -75,7 +47,7 @@ TaskGenerationResult TaskGenerator::generate(
     std::mt19937_64 rng(request.random_seed);
     std::shuffle(walkable.begin(), walkable.end(), rng);
 
-    task::Task task_data = task::Task::create(request.task_id, request.name);
+    task::TaskModel task_data = task::TaskModel::create(request.task_id, request.name);
     for (std::size_t i = 0; i < request.agent_ids.size(); ++i) {
         const auto start = walkable[i % walkable.size()];
         auto seq = route_strategy->sample(
@@ -85,19 +57,56 @@ TaskGenerationResult TaskGenerator::generate(
             request.random_seed + static_cast<std::uint64_t>(i * 19937)
         );
         if (!seq.has_minimum_points()) {
-            result.error_message = "Route strategy failed to produce a valid visit sequence.";
-            return result;
+            throw std::runtime_error("Route strategy failed to produce a valid visit sequence.");
         }
         task_data.upsert_agent_sequence(
             request.agent_ids[i],
             std::move(seq),
-            request.start_time,
-            task::AgentTaskStatus::Pending
+            request.start_time
         );
     }
 
-    result.task = std::move(task_data);
-    return result;
+    return task_data;
+}
+
+std::vector<task::TaskModel> TaskGenerator::generate_family(
+    const world::WorldModel& world_model,
+    const TaskFamilyGenerationRequest& request
+) {
+    if (request.task_count == 0) {
+        throw std::invalid_argument("Task family generation requires task_count > 0.");
+    }
+
+    std::vector<task::TaskModel> tasks;
+    tasks.reserve(request.task_count);
+    for (std::size_t i = 0; i < request.task_count; ++i) {
+        TaskGenerationRequest one = request.base_request;
+        one.task_id = request.first_task_id + static_cast<common::TaskId>(i);
+        one.start_time = request.first_start_time + static_cast<common::TimeStep>(i * request.start_time_step);
+        if (one.name.empty()) {
+            one.name = request.name_prefix + std::to_string(i);
+        }
+        one.random_seed = request.base_request.random_seed + static_cast<std::uint64_t>(i * 100003ull);
+
+        tasks.push_back(generate(world_model, one));
+    }
+    return tasks;
+}
+
+std::vector<task::TaskModel> TaskGenerator::generate_family(
+    const world::WorldModel& world_model,
+    const std::vector<TaskGenerationRequest>& requests
+) {
+    if (requests.empty()) {
+        throw std::invalid_argument("Task family generation requires at least one request item.");
+    }
+
+    std::vector<task::TaskModel> tasks;
+    tasks.reserve(requests.size());
+    for (std::size_t i = 0; i < requests.size(); ++i) {
+        tasks.push_back(generate(world_model, requests[i]));
+    }
+    return tasks;
 }
 
 }  // namespace skymapf::generator

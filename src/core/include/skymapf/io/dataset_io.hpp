@@ -10,8 +10,9 @@
 #include <string>
 #include <vector>
 
+#include "../instance/instance.hpp"
 #include "../scenario/scenario.hpp"
-#include "../task/task.hpp"
+#include "../task/task_model.hpp"
 #include "../world/world_model.hpp"
 
 namespace skymapf::io {
@@ -26,7 +27,7 @@ struct DatasetMeta {
 struct DatasetData {
     DatasetMeta meta;
     world::WorldModel world;
-    std::vector<task::Task> tasks;
+    std::vector<task::TaskModel> tasks;
 };
 
 /// Manifest values derived from serialized payload.
@@ -87,22 +88,32 @@ public:
     );
 
     /**
-     * @brief Builds one scenario per task from one dataset payload.
+     * @brief Builds one scenario model from one dataset payload.
      *
-     * @note Scenario time defaults to zero and is overridden by non-zero
-     * per-agent start times.
+     * @param data Dataset payload.
+     * @param scenario_id Scenario identifier.
+     * @param name Optional scenario name.
      */
-    static std::vector<scenario::Scenario> make_scenarios(
+    static scenario::ScenarioModel make_scenario_model(
         const DatasetData& data,
-        common::ScenarioId first_scenario_id = 1
+        common::ScenarioId scenario_id = 1,
+        std::string name = {}
     );
 
     /**
-     * @brief Reads a dataset and directly converts it into scenarios.
+     * @brief Builds one executable instance per task from dataset payload.
      */
-    static std::optional<std::vector<scenario::Scenario>> read_dataset_as_scenarios(
+    static std::vector<instance::InstanceModel> make_instances(
+        const DatasetData& data,
+        common::InstanceId first_instance_id = 1
+    );
+
+    /**
+     * @brief Reads a dataset and directly converts it into executable instances.
+     */
+    static std::optional<std::vector<instance::InstanceModel>> read_dataset_as_instances(
         const std::filesystem::path& directory,
-        common::ScenarioId first_scenario_id = 1,
+        common::InstanceId first_instance_id = 1,
         std::string* error_message = nullptr
     );
 };

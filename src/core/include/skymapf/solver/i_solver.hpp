@@ -10,8 +10,7 @@
 
 #include "../agent/agent.hpp"
 #include "../common/ids.hpp"
-#include "../task/task.hpp"
-#include "../world/world_model.hpp"
+#include "../instance/instance.hpp"
 
 namespace skymapf::solver {
 
@@ -52,10 +51,8 @@ struct Plan {
 
 /// Input bundle for one solver invocation.
 struct SolveInstance {
-    world::WorldModel world;
+    instance::InstanceModel instance;
     std::vector<agent::AgentSpec> agents;
-    std::vector<task::Task> tasks;
-    common::TimeStep current_time{0};
 };
 
 /// Output bundle for one solver invocation.

@@ -14,6 +14,8 @@ using WorldId = std::uint64_t;
 using TaskId = std::uint64_t;
 /// Unique identifier for a scenario instance.
 using ScenarioId = std::uint64_t;
+/// Unique identifier for one executable instance.
+using InstanceId = std::uint64_t;
 /// Unique identifier for an agent entity.
 using AgentId = std::uint64_t;
 /// Legacy cell identifier alias.

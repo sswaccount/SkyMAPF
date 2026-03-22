@@ -26,7 +26,7 @@ void add_issue(
 
 }  // namespace
 
-TaskValidationResult validate_task(const Task& task, const world::WorldModel& world) {
+TaskValidationResult validate_task(const TaskModel& task, const world::WorldModel& world) {
     TaskValidationResult result;
 
     if (task.empty()) {
@@ -96,7 +96,7 @@ TaskValidationResult validate_task(const Task& task, const world::WorldModel& wo
 }
 
 TaskValidationResult validate_tasks(
-    const std::vector<Task>& tasks,
+    const std::vector<TaskModel>& tasks,
     const std::vector<agent::AgentSpec>& agents,
     const world::WorldModel& world,
     bool enforce_one_active_task_per_agent

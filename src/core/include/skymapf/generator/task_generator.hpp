@@ -1,44 +1,20 @@
 /**
  * @file task_generator.hpp
- * @brief Defines task generation strategies and request/result models.
+ * @brief Defines task generation request/result models and generator APIs.
  */
 #pragma once
 
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
-#include "../task/task.hpp"
+#include "skymapf/generator/route_sampling_strategy.hpp"
+#include "../task/task_model.hpp"
 #include "../world/world_model.hpp"
 
 namespace skymapf::generator {
-
-/// Strategy interface for sampling per-agent route checkpoints.
-class IRouteSamplingStrategy {
-public:
-    virtual ~IRouteSamplingStrategy() = default;
-
-    virtual task::VisitSequence sample(
-        const world::WorldModel& world,
-        common::CellIndex start,
-        std::size_t waypoint_count,
-        std::uint64_t random_seed
-    ) const = 0;
-};
-
-/// Random route sampler over currently walkable world cells.
-class RandomReachableRouteSamplingStrategy final : public IRouteSamplingStrategy {
-public:
-    task::VisitSequence sample(
-        const world::WorldModel& world,
-        common::CellIndex start,
-        std::size_t waypoint_count,
-        std::uint64_t random_seed
-    ) const override;
-};
 
 /// Input parameters for constructing one multi-agent task.
 struct TaskGenerationRequest {
@@ -51,10 +27,14 @@ struct TaskGenerationRequest {
     std::shared_ptr<IRouteSamplingStrategy> route_strategy;
 };
 
-/// Output of task generation including optional error message.
-struct TaskGenerationResult {
-    std::optional<task::Task> task;
-    std::string error_message;
+/// Input parameters for constructing a family of tasks from one world.
+struct TaskFamilyGenerationRequest {
+    TaskGenerationRequest base_request;
+    std::size_t task_count{1};
+    common::TaskId first_task_id{1};
+    common::TimeStep first_start_time{0};
+    common::TimeStep start_time_step{1};
+    std::string name_prefix{"task_"};
 };
 
 /// Utility for producing multi-agent tasks from world state.
@@ -65,11 +45,35 @@ public:
      *
      * @param world World used as route sampling domain.
      * @param request Task generation options and agent set.
-     * @return Task generation result with either task or error text.
+     * @return Generated task object.
      */
-    static TaskGenerationResult generate(
+    static task::TaskModel generate(
         const world::WorldModel& world,
         const TaskGenerationRequest& request
+    );
+
+    /**
+     * @brief Generates multiple tasks from one world using a shared base request.
+     *
+     * @param world World used as route sampling domain.
+     * @param request Task-family generation options.
+     * @return Generated task list.
+     */
+    static std::vector<task::TaskModel> generate_family(
+        const world::WorldModel& world,
+        const TaskFamilyGenerationRequest& request
+    );
+
+    /**
+     * @brief Generates multiple tasks from one world using per-task requests.
+     *
+     * @param world World used as route sampling domain.
+     * @param requests Explicit request list, one item per task.
+     * @return Generated task list.
+     */
+    static std::vector<task::TaskModel> generate_family(
+        const world::WorldModel& world,
+        const std::vector<TaskGenerationRequest>& requests
     );
 };
 
