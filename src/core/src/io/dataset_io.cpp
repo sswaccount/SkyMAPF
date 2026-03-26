@@ -12,6 +12,7 @@
 #include <nlohmann/json.hpp>
 
 #include "skymapf/common/space.hpp"
+#include "skymapf/utils/random_tool.hpp"
 #include "skymapf/world/occupancy.hpp"
 
 namespace skymapf::io {
@@ -107,6 +108,10 @@ std::optional<world::WorldModel> world_from_json(const json& j, std::string* err
     const auto parsed_world_id = j.value("world_id", static_cast<common::WorldId>(0));
     const auto parsed_world_name = j.value("name", std::string{});
     world::WorldModel world_model(
+        parsed_world_id == 0
+            ? utils::RandomTool::instance().next_id_value()
+            : parsed_world_id,
+        parsed_world_name,
         spec,
         [](common::CellIndex cell_count) {
             auto occupancy = std::make_shared<world::DefaultOccupancyStore>(cell_count);
@@ -115,9 +120,7 @@ std::optional<world::WorldModel> world_from_json(const json& j, std::string* err
             }
             return occupancy;
         },
-        {},
-        parsed_world_id == 0 ? std::nullopt : std::optional<common::WorldId>{parsed_world_id},
-        parsed_world_name.empty() ? std::nullopt : std::optional<std::string>{parsed_world_name}
+        {}
     );
     if (!j.contains("walkable_indices") || !j.at("walkable_indices").is_array()) {
         if (error_message) {
@@ -334,6 +337,7 @@ scenario::ScenarioModel DatasetIO::make_scenario_model(
         scenario_id,
         std::move(name),
         data.world,
+        {},
         data.tasks
     );
 }

@@ -10,7 +10,7 @@
 
 #include "skymapf/task/model.hpp"
 #include "skymapf/utils/default_naming.hpp"
-#include "skymapf/utils/id_generator.hpp"
+#include "skymapf/utils/random_tool.hpp"
 
 namespace skymapf::task {
 
@@ -27,11 +27,11 @@ common::CellIndex SequenceModel::goal() const noexcept {
 }
 
 TaskModel::TaskModel()
-    : TaskModel(utils::IdGenerator::next_task_id(), {}) {}
+    : TaskModel(utils::RandomTool::instance().next_id_value(), {}) {}
 
 TaskModel::TaskModel(common::TaskId task_id, std::string name) {
     id_ = task_id;
-    name_ = name.empty() ? utils::DefaultNaming::task_name(0, task_id) : std::move(name);
+    name_ = name.empty() ? utils::DefaultNaming::next_task_name(0) : std::move(name);
 }
 
 TaskModel TaskModel::create(common::TaskId task_id, std::string name) {
@@ -75,30 +75,38 @@ bool TaskModel::is_available(common::TimeStep now) const noexcept {
 }
 
 std::size_t TaskModel::agent_count() const noexcept {
-    return agent_tasks.size();
+    return agent_tasks_.size();
 }
 
 bool TaskModel::empty() const noexcept {
-    return agent_tasks.empty();
+    return agent_tasks_.empty();
 }
 
-const std::vector<SingleAgentTaskModel>& TaskModel::agent_sequences() const noexcept {
-    return agent_tasks;
+const std::vector<AgentTaskEntry>& TaskModel::agent_entries() const noexcept {
+    return agent_tasks_;
+}
+
+const std::vector<AgentTaskEntry>& TaskModel::agent_sequences() const noexcept {
+    return agent_entries();
 }
 
 bool TaskModel::has_agent(common::AgentId agent_id) const noexcept {
     return find_index(agent_id).has_value();
 }
 
-const SingleAgentTaskModel* TaskModel::find_agent_sequence(common::AgentId agent_id) const noexcept {
+const AgentTaskEntry* TaskModel::find_agent_entry(common::AgentId agent_id) const noexcept {
     const auto idx = find_index(agent_id);
     if (!idx.has_value()) {
         return nullptr;
     }
-    return &agent_tasks[*idx];
+    return &agent_tasks_[*idx];
 }
 
-bool TaskModel::add_agent_sequence(
+const AgentTaskEntry* TaskModel::find_agent_sequence(common::AgentId agent_id) const noexcept {
+    return find_agent_entry(agent_id);
+}
+
+bool TaskModel::add_agent_entry(
     common::AgentId agent_id,
     SequenceModel visit_sequence,
     common::TimeStep start_time,
@@ -107,13 +115,48 @@ bool TaskModel::add_agent_sequence(
     if (has_agent(agent_id)) {
         return false;
     }
-    agent_tasks.push_back(SingleAgentTaskModel{
+    agent_tasks_.push_back(AgentTaskEntry{
         agent_id,
         start_time,
         std::move(visit_sequence),
         goal_behavior
     });
     return true;
+}
+
+bool TaskModel::add_agent_sequence(
+    common::AgentId agent_id,
+    SequenceModel visit_sequence,
+    common::TimeStep start_time,
+    GoalArrivalBehavior goal_behavior
+) {
+    return add_agent_entry(
+        agent_id,
+        std::move(visit_sequence),
+        start_time,
+        goal_behavior
+    );
+}
+
+void TaskModel::upsert_agent_entry(
+    common::AgentId agent_id,
+    SequenceModel visit_sequence,
+    common::TimeStep start_time,
+    GoalArrivalBehavior goal_behavior
+) {
+    const auto idx = find_index(agent_id);
+    if (idx.has_value()) {
+        agent_tasks_[*idx].start_time = start_time;
+        agent_tasks_[*idx].visit_sequence = std::move(visit_sequence);
+        agent_tasks_[*idx].goal_behavior = goal_behavior;
+        return;
+    }
+    agent_tasks_.push_back(AgentTaskEntry{
+        agent_id,
+        start_time,
+        std::move(visit_sequence),
+        goal_behavior
+    });
 }
 
 void TaskModel::upsert_agent_sequence(
@@ -122,27 +165,20 @@ void TaskModel::upsert_agent_sequence(
     common::TimeStep start_time,
     GoalArrivalBehavior goal_behavior
 ) {
-    const auto idx = find_index(agent_id);
-    if (idx.has_value()) {
-        agent_tasks[*idx].start_time = start_time;
-        agent_tasks[*idx].visit_sequence = std::move(visit_sequence);
-        agent_tasks[*idx].goal_behavior = goal_behavior;
-        return;
-    }
-    agent_tasks.push_back(SingleAgentTaskModel{
+    upsert_agent_entry(
         agent_id,
-        start_time,
         std::move(visit_sequence),
+        start_time,
         goal_behavior
-    });
+    );
 }
 
 std::optional<common::TimeStep> TaskModel::earliest_start_time() const noexcept {
-    if (agent_tasks.empty()) {
+    if (agent_tasks_.empty()) {
         return std::nullopt;
     }
-    common::TimeStep earliest = agent_tasks.front().start_time;
-    for (const auto& seq : agent_tasks) {
+    common::TimeStep earliest = agent_tasks_.front().start_time;
+    for (const auto& seq : agent_tasks_) {
         if (seq.start_time < earliest) {
             earliest = seq.start_time;
         }
@@ -150,25 +186,29 @@ std::optional<common::TimeStep> TaskModel::earliest_start_time() const noexcept 
     return earliest;
 }
 
-bool TaskModel::remove_agent_sequence(common::AgentId agent_id) {
+bool TaskModel::remove_agent_entry(common::AgentId agent_id) {
     const auto idx = find_index(agent_id);
     if (!idx.has_value()) {
         return false;
     }
-    agent_tasks.erase(agent_tasks.begin() + static_cast<std::ptrdiff_t>(*idx));
+    agent_tasks_.erase(agent_tasks_.begin() + static_cast<std::ptrdiff_t>(*idx));
     return true;
+}
+
+bool TaskModel::remove_agent_sequence(common::AgentId agent_id) {
+    return remove_agent_entry(agent_id);
 }
 
 std::optional<std::size_t> TaskModel::find_index(common::AgentId agent_id) const noexcept {
     const auto it = std::find_if(
-        agent_tasks.begin(),
-        agent_tasks.end(),
-        [agent_id](const SingleAgentTaskModel& seq) { return seq.agent_id == agent_id; }
+        agent_tasks_.begin(),
+        agent_tasks_.end(),
+        [agent_id](const AgentTaskEntry& seq) { return seq.agent_id == agent_id; }
     );
-    if (it == agent_tasks.end()) {
+    if (it == agent_tasks_.end()) {
         return std::nullopt;
     }
-    return static_cast<std::size_t>(std::distance(agent_tasks.begin(), it));
+    return static_cast<std::size_t>(std::distance(agent_tasks_.begin(), it));
 }
 
 }  // namespace skymapf::task

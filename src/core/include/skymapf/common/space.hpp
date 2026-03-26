@@ -37,8 +37,18 @@ struct GridShape3D {
  */
 class SpaceSpec {
 public:
+    /// Constructs an empty (invalid) default space spec.
     SpaceSpec() = default;
 
+    /**
+     * @brief Creates a valid 2D space specification.
+     *
+     * The resulting spec uses exactly one layer.
+     *
+     * @param cols Number of columns.
+     * @param rows Number of rows.
+     * @return Initialized 2D space specification.
+     */
     static SpaceSpec make_2d(std::int32_t cols, std::int32_t rows) {
         SpaceSpec spec;
         spec.kind_ = SpaceKind::Plane2D;
@@ -48,6 +58,14 @@ public:
         return spec;
     }
 
+    /**
+     * @brief Creates a valid 3D space specification.
+     *
+     * @param cols Number of columns.
+     * @param rows Number of rows.
+     * @param layers Number of layers.
+     * @return Initialized 3D space specification.
+     */
     static SpaceSpec make_3d(std::int32_t cols, std::int32_t rows, std::int32_t layers) {
         SpaceSpec spec;
         spec.kind_ = SpaceKind::Space3D;
@@ -57,17 +75,35 @@ public:
         return spec;
     }
 
+    /// Returns whether this spec is 2D or 3D.
     SpaceKind kind() const noexcept { return kind_; }
+    /// Returns true when this spec describes a 2D space.
     bool is_2d() const noexcept { return kind_ == SpaceKind::Plane2D; }
+    /// Returns true when this spec describes a 3D space.
     bool is_3d() const noexcept { return kind_ == SpaceKind::Space3D; }
 
+    /// Returns column size.
     std::int32_t cols() const noexcept { return cols_; }
+    /// Returns row size.
     std::int32_t rows() const noexcept { return rows_; }
+    /// Returns layer size (always 1 for valid 2D specs).
     std::int32_t layers() const noexcept { return layers_; }
 
+    /// Returns shape view in 2D layout (cols, rows).
     GridShape2D shape_2d() const noexcept { return GridShape2D{cols_, rows_}; }
+    /// Returns shape view in 3D layout (cols, rows, layers).
     GridShape3D shape_3d() const noexcept { return GridShape3D{cols_, rows_, layers_}; }
 
+    /**
+     * @brief Validates shape constraints against current space kind.
+     *
+     * Rules:
+     * - cols and rows must be positive.
+     * - 2D specs must have exactly one layer.
+     * - 3D specs must have positive layers.
+     *
+     * @return True when the shape is internally consistent and usable.
+     */
     bool is_valid() const noexcept {
         if (cols_ <= 0 || rows_ <= 0) {
             return false;

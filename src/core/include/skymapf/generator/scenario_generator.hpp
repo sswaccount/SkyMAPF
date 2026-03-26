@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include "../common/randomization_context.hpp"
 #include "../scenario/model.hpp"
 #include "./world_generator.hpp"
 #include "./task_generator.hpp"
@@ -25,7 +24,6 @@ struct ScenarioGeneratorOptions {
     std::vector<TaskGenerationOptions> tasks_gen_options{};
     std::optional<common::ScenarioId> scenario_id;
     std::optional<std::string> scenario_name;
-    std::optional<common::RandomizationContext> randomization;
 
     /**
      * @brief Constructs options with default world/task generation settings.
@@ -54,8 +52,9 @@ public:
      *
      * Flow:
      * 1. Generate world from world_gen_options.
-     * 2. Generate one task from task_gen_options.
-     * 3. Pack world and task into one ScenarioModel.
+     * 2. Generate tasks from tasks_gen_options.
+     * 3. Build static agents from generated task entries.
+     * 4. Pack world + agents + tasks into one ScenarioModel.
      *
      * @param options Scenario generation options.
      * @return Generated scenario model.

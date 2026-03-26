@@ -1,6 +1,6 @@
 /**
  * @file scenario.hpp
- * @brief Defines static scenario model that binds world and multiple tasks.
+ * @brief Defines static scenario model for dataset organization.
  */
 #pragma once
 
@@ -9,10 +9,11 @@
 #include <utility>
 #include <vector>
 
+#include "../agent/model.hpp"
 #include "../common/ids.hpp"
 #include "../task/model.hpp"
 #include "../utils/default_naming.hpp"
-#include "../utils/id_generator.hpp"
+#include "../utils/random_tool.hpp"
 #include "../world/model.hpp"
 
 namespace skymapf::instance {
@@ -22,16 +23,31 @@ class InstanceModel;
 namespace skymapf::scenario {
 
 /**
+ * @brief Optional scenario-level metadata for experiment/data management.
+ */
+struct ScenarioMetadata {
+    std::string spec_version;
+    std::string description;
+};
+
+/**
  * @brief Represents one static scenario data model.
  *
- * A scenario contains one world and multiple task definitions.
+ * Scenario is an organization layer:
+ * - one world
+ * - one static agent catalog
+ * - multiple task definitions
+ * - optional metadata
+ *
+ * It is not required to be the direct solver input.
  */
 class ScenarioModel {
 public:
     ScenarioModel()
-        : id_(utils::IdGenerator::next_scenario_id()),
-          name_(utils::DefaultNaming::scenario_name(id_)),
-          world_(),
+        : id_(utils::RandomTool::instance().next_id_value()),
+          name_(utils::DefaultNaming::next_scenario_name()),
+          world_(1, std::string{}, common::SpaceSpec::make_2d(1, 1)),
+          agents_(),
           tasks_() {}
 
     /**
@@ -46,25 +62,66 @@ public:
         common::ScenarioId id,
         std::string name,
         world::WorldModel world,
-        std::vector<task::TaskModel> tasks
+        std::vector<agent::AgentModel> agents,
+        std::vector<task::TaskModel> tasks,
+        ScenarioMetadata metadata = {}
     )
         : id_(id),
-          name_(name.empty() ? utils::DefaultNaming::scenario_name(id) : std::move(name)),
+          name_(name.empty() ? utils::DefaultNaming::next_scenario_name() : std::move(name)),
           world_(std::move(world)),
-          tasks_(std::move(tasks)) {}
+          agents_(std::move(agents)),
+          tasks_(std::move(tasks)),
+          metadata_(std::move(metadata)) {}
+
+    ScenarioModel(
+        common::ScenarioId id,
+        std::string name,
+        world::WorldModel world,
+        std::vector<task::TaskModel> tasks,
+        ScenarioMetadata metadata = {}
+    )
+        : ScenarioModel(
+            id,
+            std::move(name),
+            std::move(world),
+            {},
+            std::move(tasks),
+            std::move(metadata)
+        ) {}
 
     /// Creates a scenario model using value semantics.
     static ScenarioModel create(
         common::ScenarioId id,
         std::string name,
         world::WorldModel world,
-        std::vector<task::TaskModel> tasks
+        std::vector<agent::AgentModel> agents,
+        std::vector<task::TaskModel> tasks,
+        ScenarioMetadata metadata = {}
     ) {
         return ScenarioModel(
             id,
             std::move(name),
             std::move(world),
-            std::move(tasks)
+            std::move(agents),
+            std::move(tasks),
+            std::move(metadata)
+        );
+    }
+
+    static ScenarioModel create(
+        common::ScenarioId id,
+        std::string name,
+        world::WorldModel world,
+        std::vector<task::TaskModel> tasks,
+        ScenarioMetadata metadata = {}
+    ) {
+        return ScenarioModel(
+            id,
+            std::move(name),
+            std::move(world),
+            {},
+            std::move(tasks),
+            std::move(metadata)
         );
     }
 
@@ -87,6 +144,13 @@ public:
     /// Replaces the owned world by value.
     void set_world(world::WorldModel world) { world_ = std::move(world); }
 
+    /// Returns the owned static agent catalog (const view).
+    const std::vector<agent::AgentModel>& agents() const noexcept { return agents_; }
+    /// Returns the owned static agent catalog (mutable view).
+    std::vector<agent::AgentModel>& agents() noexcept { return agents_; }
+    /// Replaces the owned agent catalog by value.
+    void set_agents(std::vector<agent::AgentModel> agents) { agents_ = std::move(agents); }
+
     /// Returns the owned tasks (const view).
     const std::vector<task::TaskModel>& tasks() const noexcept { return tasks_; }
     /// Returns the owned tasks (mutable view).
@@ -97,6 +161,11 @@ public:
     void clear_tasks() { tasks_.clear(); }
     /// Appends one task.
     void add_task(task::TaskModel task) { tasks_.push_back(std::move(task)); }
+
+    /// Returns scenario metadata.
+    const ScenarioMetadata& metadata() const noexcept { return metadata_; }
+    /// Sets scenario metadata.
+    void set_metadata(ScenarioMetadata metadata) { metadata_ = std::move(metadata); }
 
     /**
      * @brief Exports one executable instance per task.
@@ -126,7 +195,9 @@ private:
     common::ScenarioId id_;
     std::string name_;
     world::WorldModel world_;
+    std::vector<agent::AgentModel> agents_;
     std::vector<task::TaskModel> tasks_;
+    ScenarioMetadata metadata_;
 };
 
 }  // namespace skymapf::scenario

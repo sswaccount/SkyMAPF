@@ -5,12 +5,12 @@
 #pragma once
 
 #include <memory>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <utility>
 
 #include "../common/space.hpp"
-#include "../common/randomization_context.hpp"
 #include "./strategy/edge_generation_strategy.hpp"
 #include "./strategy/obstacle_layout_strategy.hpp"
 #include "../world/validation.hpp"
@@ -30,49 +30,33 @@ struct WorldGenerationOptions {
     WorldGenerationOptions() = default;
 
     /**
-     * @brief Constructs options with explicit space and obstacle settings.
+     * @brief Constructs options with explicit space and obstacle density.
      *
      * @param spec Discrete world dimensions.
-     * @param obstacle Density and randomization parameters.
+     * @param density Obstacle ratio in [0, 1).
      */
     explicit WorldGenerationOptions(
         common::SpaceSpec spec,
-        ObstacleDensityConfig obstacle = {}
+        double density = 0.2
     )
-        : space_spec(std::move(spec)), obstacle_config(obstacle) {}
+        : space_spec(std::move(spec)), obstacle_density(density) {}
 
     /**
-     * @brief Constructs options with explicit space, settings, and strategy.
+     * @brief Constructs options with explicit space, density, and edge strategies.
      *
      * @param spec Discrete world dimensions.
-     * @param obstacle Density and randomization parameters.
-     * @param strategy Obstacle generation strategy object.
-     */
-    WorldGenerationOptions(
-        common::SpaceSpec spec,
-        ObstacleDensityConfig obstacle,
-        std::shared_ptr<IObstacleLayoutStrategy> strategy
-    )
-        : space_spec(std::move(spec)),
-          obstacle_config(obstacle),
-          obstacle_strategy(std::move(strategy)) {}
-
-    /**
-     * @brief Constructs options with explicit space, obstacle, and edge strategies.
-     *
-     * @param spec Discrete world dimensions.
-     * @param obstacle Density and randomization parameters.
+     * @param density Obstacle ratio in [0, 1).
      * @param obstacle_gen Obstacle generation strategy object.
      * @param edge_gen Edge generation strategy object.
      */
     WorldGenerationOptions(
         common::SpaceSpec spec,
-        ObstacleDensityConfig obstacle,
+        double density,
         std::shared_ptr<IObstacleLayoutStrategy> obstacle_gen,
         std::shared_ptr<IEdgeGenerationStrategy> edge_gen
     )
         : space_spec(std::move(spec)),
-          obstacle_config(obstacle),
+          obstacle_density(density),
           obstacle_strategy(std::move(obstacle_gen)),
           edge_strategy(std::move(edge_gen)) {}
 
@@ -82,10 +66,10 @@ struct WorldGenerationOptions {
     std::optional<common::WorldId> world_id;
     /// Optional explicit world name. When missing, generator auto-completes it.
     std::optional<std::string> world_name;
-    /// Optional unified randomization context. When missing, legacy seed/default behavior is used.
-    std::optional<common::RandomizationContext> randomization;
-    /// Obstacle density and random seed controls.
-    ObstacleDensityConfig obstacle_config{};
+    /// Optional deterministic seed for world generation.
+    std::uint64_t random_seed{0};
+    /// Obstacle ratio in [0, 1).
+    double obstacle_density{0.2};
     /// Optional obstacle strategy; default connected-carving strategy is used when null.
     std::shared_ptr<IObstacleLayoutStrategy> obstacle_strategy;
     /// Optional edge strategy; default bidirectional geometric strategy is used when null.

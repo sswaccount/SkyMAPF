@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include "agent/agent.hpp"
+#include "agent/model.hpp"
 #include "common/types.hpp"
 #include "generator/scenario_generator.hpp"
 #include "generator/task_generator.hpp"
@@ -16,5 +16,5 @@
 #include "task/runtime.hpp"
 #include "task/validation.hpp"
 #include "utils/default_naming.hpp"
-#include "utils/id_generator.hpp"
+#include "utils/random_tool.hpp"
 #include "world/world.hpp"

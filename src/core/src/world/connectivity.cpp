@@ -58,7 +58,7 @@ bool AdjacencyListGraph::add_bidirectional_edge(common::CellIndex a, common::Cel
     return true;
 }
 
-bool AdjacencyListGraph::clear_edge() noexcept {
+bool AdjacencyListGraph::clear_edges() noexcept {
     adjacency_.clear();
     return true;
 }
@@ -132,7 +132,7 @@ bool AdjacencyMatrixGraph::add_bidirectional_edge(common::CellIndex a, common::C
     return true;
 }
 
-bool AdjacencyMatrixGraph::clear_edge() noexcept {
+bool AdjacencyMatrixGraph::clear_edges() noexcept {
     for (auto& row : matrix_) {
         std::fill(row.begin(), row.end(), 0u);
     }

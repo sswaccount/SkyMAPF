@@ -19,14 +19,15 @@ namespace skymapf::generator {
 // 3) randomly carve frontier cells until target walkable count is reached.
 bool ConnectedCarvingObstacleLayoutStrategy::apply(
     world::WorldModel& world_model,
-    const ObstacleDensityConfig& config
+    double obstacle_density,
+    std::uint64_t random_seed
 ) const {
     const auto total = world_model.cell_count();
     if (total == 0) {
         return false;
     }
 
-    const auto density = std::clamp(config.obstacle_density, 0.0, 0.999);
+    const auto density = std::clamp(obstacle_density, 0.0, 0.999);
     auto target_walkable = static_cast<std::size_t>(
         std::llround(static_cast<double>(total) * (1.0 - density))
     );
@@ -38,7 +39,7 @@ bool ConnectedCarvingObstacleLayoutStrategy::apply(
         world_model.set_walkable(i, false);
     }
 
-    std::mt19937_64 rng(config.random_seed);
+    std::mt19937_64 rng(random_seed);
     std::uniform_int_distribution<common::CellIndex> pick_cell(0, total - 1);
     const auto start = pick_cell(rng);
     world_model.set_walkable(start, true);

@@ -8,9 +8,8 @@
 #include <string>
 #include <vector>
 
-#include "../agent/agent.hpp"
 #include "../common/ids.hpp"
-#include "../instance/instance.hpp"
+#include "../instance/model.hpp"
 
 namespace skymapf::solver {
 
@@ -52,7 +51,6 @@ struct Plan {
 /// Input bundle for one solver invocation.
 struct SolveInstance {
     instance::InstanceModel instance;
-    std::vector<agent::AgentSpec> agents;
 };
 
 /// Output bundle for one solver invocation.

@@ -21,10 +21,6 @@ class WorldModel;
  *
  * This helper ignores walkability and returns axis-aligned neighbors only:
  * 4-neighborhood in 2D and 6-neighborhood in 3D.
- *
- * @param spec Space specification that defines dimensions and mode (2D/3D).
- * @param from Source cell index.
- * @return In-bounds geometric neighbor indices.
  */
 std::vector<common::CellIndex> geometric_neighbors(
     const common::SpaceSpec& spec,
@@ -52,7 +48,7 @@ public:
 
     virtual bool add_directed_edge(common::CellIndex from, common::CellIndex to) = 0;
     virtual bool add_bidirectional_edge(common::CellIndex a, common::CellIndex b) = 0;
-    virtual bool clear_edge() noexcept = 0;
+    virtual bool clear_edges() noexcept = 0;
     virtual bool has_directed_edge(common::CellIndex from, common::CellIndex to) const noexcept = 0;
 };
 
@@ -65,7 +61,7 @@ class AdjacencyListGraph final : public IConnectivityGraph {
 public:
     bool add_directed_edge(common::CellIndex from, common::CellIndex to) override;
     bool add_bidirectional_edge(common::CellIndex a, common::CellIndex b) override;
-    bool clear_edge() noexcept override;
+    bool clear_edges() noexcept override;
     bool has_directed_edge(common::CellIndex from, common::CellIndex to) const noexcept override;
 
     std::vector<common::CellIndex> neighbors(
@@ -89,7 +85,7 @@ public:
 
     bool add_directed_edge(common::CellIndex from, common::CellIndex to) override;
     bool add_bidirectional_edge(common::CellIndex a, common::CellIndex b) override;
-    bool clear_edge() noexcept override;
+    bool clear_edges() noexcept override;
     bool has_directed_edge(common::CellIndex from, common::CellIndex to) const noexcept override;
 
     std::vector<common::CellIndex> neighbors(

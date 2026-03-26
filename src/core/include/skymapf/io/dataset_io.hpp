@@ -26,7 +26,7 @@ struct DatasetMeta {
 /// Payload data serialized in dataset files.
 struct DatasetData {
     DatasetMeta meta;
-    world::WorldModel world;
+    world::WorldModel world{1, std::string{}, common::SpaceSpec::make_2d(1, 1)};
     std::vector<task::TaskModel> tasks;
 };
 

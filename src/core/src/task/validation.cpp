@@ -99,7 +99,7 @@ TaskValidationResult validate_task(const TaskModel& task, const world::WorldMode
 
 TaskValidationResult validate_tasks(
     const std::vector<TaskModel>& tasks,
-    const std::vector<agent::AgentSpec>& agents,
+    const std::vector<agent::AgentModel>& agents,
     const world::WorldModel& world,
     bool enforce_one_active_task_per_agent
 ) {
@@ -107,9 +107,7 @@ TaskValidationResult validate_tasks(
     std::unordered_set<common::AgentId> known_agents;
     known_agents.reserve(agents.size());
     for (const auto& agent : agents) {
-        if (agent.id.has_value()) {
-            known_agents.insert(*agent.id);
-        }
+        known_agents.insert(agent.id());
     }
 
     std::unordered_set<common::AgentId> assigned_agents;

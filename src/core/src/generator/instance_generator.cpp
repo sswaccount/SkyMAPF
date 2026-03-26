@@ -6,58 +6,35 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
+#include "skymapf/agent/model.hpp"
 #include "skymapf/utils/default_naming.hpp"
-#include "skymapf/utils/id_generator.hpp"
+#include "skymapf/utils/random_tool.hpp"
 
 namespace skymapf::generator {
 
 instance::InstanceModel InstanceGenerator::generate(const InstanceGeneratorOptions& options) {
-    const auto randomization = options.randomization.value_or(
-        options.task_gen_options.randomization.value_or(
-            options.task_gen_options.random_seed == 0
-                ? options.world_gen_options.randomization.value_or(
-                      options.world_gen_options.obstacle_config.random_seed == 0
-                          ? common::RandomizationContext::make_default()
-                          : common::RandomizationContext::make_deterministic(
-                                options.world_gen_options.obstacle_config.random_seed
-                            )
-                  )
-                : common::RandomizationContext::make_deterministic(options.task_gen_options.random_seed)
-        )
-    );
+    auto world_model = WorldGenerator::generate(options.world_gen_options);
+    auto task_model = TaskGenerator::generate(world_model, options.task_gen_options);
 
-    auto world_options = options.world_gen_options;
-    if (!world_options.randomization.has_value()) {
-        world_options.randomization = randomization;
+    std::vector<agent::AgentModel> agents;
+    agents.reserve(task_model.agent_entries().size());
+    for (const auto& entry : task_model.agent_entries()) {
+        agents.emplace_back(entry.agent_id, utils::DefaultNaming::next_agent_name());
     }
-    auto task_options = options.task_gen_options;
-    if (!task_options.randomization.has_value()) {
-        if (task_options.random_seed != 0) {
-            task_options.randomization = common::RandomizationContext::make_deterministic(
-                task_options.random_seed
-            );
-        } else {
-            task_options.randomization = randomization;
-        }
-    }
-
-    auto world_model = WorldGenerator::generate(world_options);
-    auto task_model = TaskGenerator::generate(world_model, task_options);
 
     const auto instance_id = options.instance_id.value_or(
-        utils::IdGenerator::deterministic_instance_id(
-            randomization,
-            static_cast<std::uint64_t>(task_model.id()) ^ static_cast<std::uint64_t>(world_model.id())
-        )
+        utils::RandomTool::instance().next_id_value()
     );
     auto instance_name = options.instance_name.value_or(
-        utils::DefaultNaming::instance_name(randomization, instance_id)
+        utils::DefaultNaming::next_instance_name()
     );
 
     return instance::InstanceModel::create(
         instance_id,
         std::move(world_model),
+        std::move(agents),
         std::move(task_model),
         std::move(instance_name)
     );

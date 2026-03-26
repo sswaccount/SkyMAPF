@@ -11,16 +11,6 @@
 namespace skymapf::generator {
 
 /**
- * @brief Parameters controlling stochastic obstacle density sampling.
- */
-struct ObstacleDensityConfig {
-    /// Obstacle ratio in [0, 1). Zero means no obstacles.
-    double obstacle_density{0.2};
-    /// Seed used by deterministic pseudo-random generation.
-    std::uint64_t random_seed{0};
-};
-
-/**
  * @brief Strategy interface for generating obstacle layouts.
  */
 class IObstacleLayoutStrategy {
@@ -33,12 +23,14 @@ public:
      * Implementations may mutate walkability of any valid cell in @p world.
      *
      * @param world Target world model to mutate.
-     * @param config Density and randomization parameters.
+     * @param obstacle_density Obstacle ratio in [0, 1).
+     * @param random_seed Deterministic pseudo-random seed.
      * @return True when generation succeeds; false when no valid layout can be produced.
      */
     virtual bool apply(
         world::WorldModel& world,
-        const ObstacleDensityConfig& config
+        double obstacle_density,
+        std::uint64_t random_seed
     ) const = 0;
 };
 
@@ -54,12 +46,14 @@ public:
      * @brief Generates one connected walkable region under the requested density.
      *
      * @param world Target world model to mutate.
-     * @param config Density and randomization parameters.
+     * @param obstacle_density Obstacle ratio in [0, 1).
+     * @param random_seed Deterministic pseudo-random seed.
      * @return True when at least one walkable cell is carved; false otherwise.
      */
     bool apply(
         world::WorldModel& world,
-        const ObstacleDensityConfig& config
+        double obstacle_density,
+        std::uint64_t random_seed
     ) const override;
 };
 

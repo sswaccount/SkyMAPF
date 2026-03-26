@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "skymapf/common/ids.hpp"
-#include "skymapf/common/randomization_context.hpp"
 #include "skymapf/generator/strategy/route_sampling_strategy.hpp"
 #include "skymapf/task/model.hpp"
 #include "../world/model.hpp"
@@ -90,8 +89,6 @@ struct TaskGenerationOptions {
     std::optional<common::TaskId> task_id;
     /// Optional explicit task name. When missing, generator auto-completes it.
     std::optional<std::string> task_name;
-    /// Optional unified randomization context. When missing, legacy seed/default behavior is used.
-    std::optional<common::RandomizationContext> randomization;
     /// Random seed controlling deterministic generation behavior.
     std::uint64_t random_seed{0};
     /// Maximum allowed visit-sequence size for each generated agent.

@@ -1,7 +1,8 @@
 /**
- * @file model.cpp
- * @brief Implements world model state mutation and policy delegation.
- */
+* @file model.cpp
+* @brief Implements world model state mutation and policy delegation.
+*/
+
 #include "skymapf/world/model.hpp"
 
 #include <memory>
@@ -10,7 +11,7 @@
 #include "skymapf/common/index.hpp"
 #include "skymapf/common/space.hpp"
 #include "skymapf/utils/default_naming.hpp"
-#include "skymapf/utils/id_generator.hpp"
+#include "skymapf/utils/random_tool.hpp"
 #include "skymapf/world/connectivity.hpp"
 #include "skymapf/world/occupancy.hpp"
 
@@ -25,36 +26,61 @@ WorldModel::OccupancyFactory build_default_occupancy_factory() {
 }
 
 WorldModel::ConnectivityFactory build_default_connectivity_factory() {
-    return []() { return std::make_shared<DefaultConnectivityGraph>(); };
+    return []() {
+        return std::make_shared<DefaultConnectivityGraph>();
+    };
 }
 
 }  // namespace
 
-WorldModel::WorldModel()
+WorldModel::WorldModel(common::SpaceSpec space_spec)
     : WorldModel(
-        common::SpaceSpec::make_2d(1, 1),
-        build_default_occupancy_factory(),
-        build_default_connectivity_factory()
+        utils::RandomTool::instance().next_id_value(),
+        utils::DefaultNaming::next_world_name(space_spec),
+        std::move(space_spec),
+        {},
+        {}
     ) {}
 
 WorldModel::WorldModel(
     common::SpaceSpec space_spec,
     OccupancyFactory occupancy_factory,
-    ConnectivityFactory connectivity_factory,
-    std::optional<common::WorldId> id,
-    std::optional<std::string> name
+    ConnectivityFactory connectivity_factory
 )
-    : id_(id.value_or(utils::IdGenerator::next_world_id())),
-      name_(),
-      space_spec_(std::move(space_spec)),
-      occupancy_factory_(occupancy_factory ? std::move(occupancy_factory) : build_default_occupancy_factory()),
-      connectivity_factory_(
-          connectivity_factory ? std::move(connectivity_factory) : build_default_connectivity_factory()
-      ),
-      occupancy_(nullptr),
-      connectivity_policy_(nullptr) {
-    name_ = name.value_or(utils::DefaultNaming::world_name(space_spec_, id_));
-    occupancy_ = occupancy_factory_(common::cell_count(space_spec_));
+    : WorldModel(
+        utils::RandomTool::instance().next_id_value(),
+        utils::DefaultNaming::next_world_name(space_spec),
+        std::move(space_spec),
+        std::move(occupancy_factory),
+        std::move(connectivity_factory)
+    ) {}
+
+WorldModel::WorldModel(
+    common::WorldId id,
+    std::string name,
+    common::SpaceSpec space_spec,
+    OccupancyFactory occupancy_factory,
+    ConnectivityFactory connectivity_factory
+)
+    : id_(id),
+    name_(std::move(name)),
+    space_spec_(std::move(space_spec)),
+    occupancy_factory_(
+        occupancy_factory ? std::move(occupancy_factory)
+                            : build_default_occupancy_factory()
+    ),
+    connectivity_factory_(
+        connectivity_factory ? std::move(connectivity_factory)
+                            : build_default_connectivity_factory()
+    ),
+    occupancy_policy_(nullptr),
+    connectivity_policy_(nullptr) {
+        
+    if (name_.empty()) {
+        name_ = utils::DefaultNaming::next_world_name(space_spec_);
+    }
+
+    occupancy_policy_ = occupancy_factory_(common::cell_count(space_spec_));
     connectivity_policy_ = connectivity_factory_();
 }
 
@@ -81,10 +107,10 @@ bool WorldModel::is_valid_coord(const common::CellCoord3D& coord) const noexcept
 }
 
 bool WorldModel::is_walkable(common::CellIndex index) const noexcept {
-    if (!occupancy_) {
+    if (!occupancy_policy_ || !is_valid_index(index)) {
         return false;
     }
-    return occupancy_->is_walkable(index);
+    return occupancy_policy_->is_walkable(index);
 }
 
 bool WorldModel::is_walkable(const common::CellCoord2D& coord) const noexcept {
@@ -102,10 +128,10 @@ bool WorldModel::is_walkable(const common::CellCoord3D& coord) const noexcept {
 }
 
 void WorldModel::set_walkable(common::CellIndex index, bool walkable) {
-    if (!occupancy_) {
+    if (!occupancy_policy_ || !is_valid_index(index)) {
         return;
     }
-    occupancy_->set_walkable(index, walkable);
+    occupancy_policy_->set_walkable(index, walkable);
 }
 
 void WorldModel::set_walkable(const common::CellCoord2D& coord, bool walkable) {
@@ -147,7 +173,7 @@ bool WorldModel::clear_edges() {
     if (!connectivity_policy_) {
         return false;
     }
-    return connectivity_policy_->clear_edge();
+    return connectivity_policy_->clear_edges();
 }
 
 bool WorldModel::add_directed_edge(common::CellIndex from, common::CellIndex to) {

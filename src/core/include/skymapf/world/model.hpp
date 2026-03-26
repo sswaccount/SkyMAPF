@@ -5,7 +5,6 @@
 #pragma once
 
 #include <functional>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -32,7 +31,23 @@ public:
     using ConnectivityFactory = std::function<ConnectivityGraphPtr()>;
 
     /// Constructs a default 1x1 walkable 2D world.
-    WorldModel();
+    explicit WorldModel(common::SpaceSpec space_spec);
+
+    /**
+     * @brief Constructs a world with explicit shape and pluggable factories.
+     *
+     * @param space_spec Discrete world dimensions.
+     * @param occupancy_factory Factory for creating occupancy storage.
+     * @param connectivity_factory Factory for creating connectivity policy.
+     * @param id Optional explicit world id; auto-generated when missing.
+     * @param name Optional explicit world display name; auto-generated when missing.
+     */
+     explicit WorldModel(
+        common::SpaceSpec space_spec,
+        OccupancyFactory occupancy_factory = {},
+        ConnectivityFactory connectivity_factory = {}
+    );
+
     /**
      * @brief Constructs a world with explicit shape and pluggable factories.
      *
@@ -43,11 +58,11 @@ public:
      * @param name Optional explicit world display name; auto-generated when missing.
      */
     explicit WorldModel(
+        common::WorldId id,
+        std::string name,
         common::SpaceSpec space_spec,
         OccupancyFactory occupancy_factory = {},
-        ConnectivityFactory connectivity_factory = {},
-        std::optional<common::WorldId> id = std::nullopt,
-        std::optional<std::string> name = std::nullopt
+        ConnectivityFactory connectivity_factory = {}
     );
 
     /// Returns stable world id for program references and serialization.
@@ -65,7 +80,7 @@ public:
     /// Returns current discrete world dimensions.
     const common::SpaceSpec& space_spec() const noexcept { return space_spec_; }
     /// Returns current occupancy storage object.
-    const OccupancyStorePtr& occupancy_map() const noexcept { return occupancy_; }
+    const OccupancyStorePtr& occupancy_policy() const noexcept { return occupancy_policy_; }
     /// Returns current connectivity policy object.
     const ConnectivityGraphPtr& connectivity_policy() const noexcept { return connectivity_policy_; }
 
@@ -146,7 +161,7 @@ private:
     common::SpaceSpec space_spec_;
     OccupancyFactory occupancy_factory_;
     ConnectivityFactory connectivity_factory_;
-    OccupancyStorePtr occupancy_;
+    OccupancyStorePtr occupancy_policy_;
     ConnectivityGraphPtr connectivity_policy_;
 };
 

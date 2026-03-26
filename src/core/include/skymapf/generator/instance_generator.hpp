@@ -8,7 +8,6 @@
 #include <string>
 #include <utility>
 
-#include "../common/randomization_context.hpp"
 #include "../instance/model.hpp"
 #include "./task_generator.hpp"
 #include "./world_generator.hpp"
@@ -23,7 +22,6 @@ struct InstanceGeneratorOptions {
     TaskGenerationOptions task_gen_options{};
     std::optional<common::InstanceId> instance_id;
     std::optional<std::string> instance_name;
-    std::optional<common::RandomizationContext> randomization;
 
     /**
      * @brief Constructs options with default world/task generation settings.
@@ -72,7 +70,8 @@ public:
      * Flow:
      * 1. Generate world from world_gen_options.
      * 2. Generate one task from task_gen_options.
-     * 3. Pack world and task into one InstanceModel.
+     * 3. Build static agents from task entries.
+     * 4. Pack world + agents + task into one InstanceModel.
      *
      * @param options Instance generation options.
      * @return Generated instance model.

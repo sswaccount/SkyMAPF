@@ -11,7 +11,7 @@
 
 #include "skymapf/task/validation.hpp"
 #include "skymapf/utils/default_naming.hpp"
-#include "skymapf/utils/id_generator.hpp"
+#include "skymapf/utils/random_tool.hpp"
 
 namespace skymapf::generator {
 
@@ -37,32 +37,6 @@ void validate_options_or_throw(const TaskGenerationOptions& options) {
     }
 }
 
-common::TaskId derive_task_id(
-    const world::WorldModel& world_model,
-    const TaskGenerationOptions& options,
-    const common::RandomizationContext& randomization
-) {
-    // A stable deterministic id derived from generation context.
-    std::uint64_t value = options.random_seed;
-    value ^= (static_cast<std::uint64_t>(world_model.cell_count()) << 1);
-    value ^= (static_cast<std::uint64_t>(options.agent_count) << 17);
-    value ^= (static_cast<std::uint64_t>(options.max_sequence_size) << 33);
-    value ^= (static_cast<std::uint64_t>(options.max_start_time) << 49);
-    if (value == 0) {
-        value = 1;
-    }
-    return utils::IdGenerator::deterministic_task_id(randomization, value);
-}
-
-common::AgentId derive_agent_id(
-    const common::RandomizationContext& randomization,
-    common::TaskId task_id,
-    std::size_t index
-) {
-    const auto salt = static_cast<std::uint64_t>(task_id) ^ static_cast<std::uint64_t>(index + 1);
-    return utils::IdGenerator::deterministic_agent_id(randomization, salt);
-}
-
 }  // namespace
 
 task::TaskModel TaskGenerator::generate(
@@ -70,11 +44,6 @@ task::TaskModel TaskGenerator::generate(
     const TaskGenerationOptions& options
 ) {
     validate_options_or_throw(options);
-    const auto randomization = options.randomization.value_or(
-        options.random_seed == 0
-            ? common::RandomizationContext::make_default()
-            : common::RandomizationContext::make_deterministic(options.random_seed)
-    );
 
     auto walkable = collect_walkable_cells(world_model);
     if (walkable.empty()) {
@@ -86,16 +55,24 @@ task::TaskModel TaskGenerator::generate(
         route_strategy = std::make_shared<DefaultRouteSamplingStrategy>();
     }
 
-    auto rng = randomization.make_rng(
-        common::RandomizationDomain::GeneratorTask,
-        static_cast<std::uint64_t>(world_model.id())
-    );
-    std::shuffle(walkable.begin(), walkable.end(), rng);
+    auto& random_tool = utils::RandomTool::instance();
+    std::mt19937_64 task_rng;
+    std::mt19937_64 agent_id_rng;
+    if (options.random_seed == 0) {
+        task_rng.seed(static_cast<std::uint64_t>(random_tool.generator_rng()()));
+        agent_id_rng.seed(static_cast<std::uint64_t>(random_tool.id_rng()()));
+    } else {
+        task_rng.seed(options.random_seed);
+        agent_id_rng.seed(options.random_seed ^ 0x9E3779B97F4A7C15ULL);
+    }
+    std::shuffle(walkable.begin(), walkable.end(), task_rng);
     std::uniform_int_distribution<common::TimeStep> start_time_dist(0, options.max_start_time);
 
-    const auto generated_task_id = options.task_id.value_or(derive_task_id(world_model, options, randomization));
+    const auto generated_task_id = options.task_id.value_or(
+        static_cast<common::TaskId>(agent_id_rng())
+    );
     const auto generated_task_name = options.task_name.value_or(
-        utils::DefaultNaming::task_name(options.agent_count, randomization, generated_task_id)
+        utils::DefaultNaming::next_task_name(options.agent_count)
     );
     auto task_data = task::TaskModel::create(
         generated_task_id,
@@ -104,7 +81,7 @@ task::TaskModel TaskGenerator::generate(
 
     for (std::size_t i = 0; i < options.agent_count; ++i) {
         const auto start = walkable[i % walkable.size()];
-        const auto agent_id = derive_agent_id(randomization, generated_task_id, i);
+        const auto agent_id = static_cast<common::AgentId>(agent_id_rng());
         RouteSamplingContext context{
             world_model,
             options,
@@ -112,10 +89,7 @@ task::TaskModel TaskGenerator::generate(
             agent_id,
             start,
             task_data,
-            randomization.derive_seed(
-                common::RandomizationDomain::GeneratorRoute,
-                static_cast<std::uint64_t>(generated_task_id) ^ static_cast<std::uint64_t>(i + 1)
-            )
+            static_cast<std::uint64_t>(task_rng())
         };
         auto sampling_result = route_strategy->sample(context);
         if (!sampling_result.success) {
@@ -135,7 +109,7 @@ task::TaskModel TaskGenerator::generate(
         task_data.upsert_agent_sequence(
             agent_id,
             std::move(sampling_result.sequence),
-            start_time_dist(rng)
+            start_time_dist(task_rng)
         );
     }
 

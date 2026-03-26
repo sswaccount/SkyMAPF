@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "../agent/agent.hpp"
+#include "../agent/model.hpp"
 #include "model.hpp"
 
 namespace skymapf::world {
@@ -63,14 +63,14 @@ TaskValidationResult validate_task(const TaskModel& task, const world::WorldMode
  * @brief Validates a task set with optional cross-task constraints.
  *
  * @param tasks Tasks to validate.
- * @param agents Known agents referenced by tasks.
+ * @param agents Known static agents referenced by tasks.
  * @param world World used for spatial checks.
  * @param enforce_one_active_task_per_agent Enables duplicate assignment checks.
  * @return Aggregated validation result across all tasks.
  */
 TaskValidationResult validate_tasks(
     const std::vector<TaskModel>& tasks,
-    const std::vector<agent::AgentSpec>& agents,
+    const std::vector<agent::AgentModel>& agents,
     const world::WorldModel& world,
     bool enforce_one_active_task_per_agent = true
 );

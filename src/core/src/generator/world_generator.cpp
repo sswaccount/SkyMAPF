@@ -4,26 +4,22 @@
  */
 #include "skymapf/generator/world_generator.hpp"
 
+#include <random>
 #include <stdexcept>
 #include "skymapf/utils/default_naming.hpp"
-#include "skymapf/utils/id_generator.hpp"
+#include "skymapf/utils/random_tool.hpp"
 #include "skymapf/world/validation.hpp"
 
 namespace skymapf::generator {
 
 world::WorldModel WorldGenerator::generate(const WorldGenerationOptions& options) {
-    const auto randomization = options.randomization.value_or(
-        options.obstacle_config.random_seed == 0
-            ? common::RandomizationContext::make_default()
-            : common::RandomizationContext::make_deterministic(options.obstacle_config.random_seed)
-    );
     const auto world_id = options.world_id.value_or(
-        utils::IdGenerator::deterministic_world_id(randomization)
+        utils::RandomTool::instance().next_id_value()
     );
     const auto world_name = options.world_name.value_or(
-        utils::DefaultNaming::world_name(options.space_spec, randomization, world_id)
+        utils::DefaultNaming::next_world_name(options.space_spec)
     );
-    auto world_model = world::WorldModel(options.space_spec, {}, {}, world_id, world_name);
+    auto world_model = world::WorldModel(world_id, world_name, options.space_spec, {}, {});
     auto obstacle_strategy = options.obstacle_strategy;
     if (!obstacle_strategy) {
         obstacle_strategy = std::make_shared<DefaultObstacleLayoutStrategy>();
@@ -33,14 +29,10 @@ world::WorldModel WorldGenerator::generate(const WorldGenerationOptions& options
         edge_strategy = std::make_shared<DefaultEdgeGenerationStrategy>();
     }
 
-    auto obstacle_config = options.obstacle_config;
-    if (options.randomization.has_value() || obstacle_config.random_seed == 0) {
-        obstacle_config.random_seed = randomization.derive_seed(
-            common::RandomizationDomain::GeneratorObstacle,
-            world_id
-        );
-    }
-    if (!obstacle_strategy->apply(world_model, obstacle_config)) {
+    const auto obstacle_seed = options.random_seed == 0
+        ? static_cast<std::uint64_t>(utils::RandomTool::instance().generator_rng()())
+        : options.random_seed;
+    if (!obstacle_strategy->apply(world_model, options.obstacle_density, obstacle_seed)) {
         throw std::runtime_error("World generation failed: obstacle strategy could not produce a layout.");
     }
     edge_strategy->apply(world_model);
