@@ -1,3 +1,15 @@
+# Auto-discover test sources so new test files do not require manual CMake edits.
+file(GLOB_RECURSE SKYMAPF_TEST_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cxx"
+)
+
+if(NOT SKYMAPF_TEST_SOURCES)
+    message(STATUS "No test sources found under test/.")
+    return()
+endif()
+
 foreach(test_src IN LISTS SKYMAPF_TEST_SOURCES)
     file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_src}")
     string(REGEX REPLACE "[/\\\\]" "__" target_suffix "${rel_path}")

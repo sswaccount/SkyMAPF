@@ -5,6 +5,7 @@
 #pragma once
 
 /// World module entrypoint.
+#include "./analysis.hpp"
 #include "./connectivity.hpp"
 #include "./occupancy.hpp"
 #include "./validation.hpp"

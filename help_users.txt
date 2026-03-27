@@ -1,0 +1,512 @@
+SkyMAPF 用户上手说明书（help_users.txt）
+=======================================
+
+目标
+----
+本文件用于帮助新用户在最短时间内理解 sktmapf 仓库结构、关键代码位置、各模块如何协作，以及如何开始二次开发。
+
+注意：当前版本的 SkyMAPF 主要完成“建模、数据生成、数据集 IO、接口预留”，尚未提供完整的 MAPF 求解算法实现（仅有 solver 接口）。
+
+
+一、仓库根目录总览
+------------------
+
+1) .github/
+- 作用：仓库协作与自动化配置（如 CI 工作流、PR 规范等）。
+- 上手建议：如果你只关注算法与业务代码，可以暂时忽略。
+
+2) bindings/
+- 作用：语言绑定层（目前是 Python 绑定）。
+- 入口：bindings/python/
+
+3) cmake/
+- 作用：CMake 辅助脚本，主要是三方依赖获取逻辑。
+- 入口：cmake/deps.cmake
+
+4) doc/
+- 作用：文档与代码规范说明。
+- 当前主要文件是注释风格规范，不是 API 手册。
+
+5) example/
+- 作用：示例程序，最适合第一眼上手。
+- 入口：example/2_CreateScenario/main.cpp
+
+6) scripts/
+- 作用：常见构建脚本（Linux/Windows）。
+
+7) src/
+- 作用：核心源码。最重要目录。
+- 子目录：src/core（核心库）、src/cli（命令行程序）
+
+8) test/
+- 作用：测试代码（当前较少）。
+
+9) 顶层文件
+- CMakeLists.txt：项目总构建入口与开关。
+- pyproject.toml：Python 打包配置（基于 scikit-build-core）。
+- README.md：当前内容非常简短，不足以指导开发。
+
+
+二、顶层关键文件说明
+--------------------
+
+1) CMakeLists.txt
+- 主要功能：
+  - 定义工程版本、编译标准（C++17）。
+  - 控制开关：是否构建 CLI、测试、示例、Python 绑定。
+  - 引入 src/core，并按开关引入 cli/example/test/python。
+- 你需要关注的选项：
+  - SKYMAPF_BUILD_CLI
+  - SKYMAPF_BUILD_TESTS
+  - SKYMAPF_BUILD_EXAMPLES
+  - SKYMAPF_BUILD_PYTHON_BINDINGS
+
+2) pyproject.toml
+- 主要功能：支持 Python wheel 构建，绑定模块名称是 skymapf。
+- 说明：Python 绑定当前只暴露 common 子模块和版本信息。
+
+
+三、src/ 目录详解
+-----------------
+
+src/cli/
+~~~~~~~~
+定位：命令行程序层（可执行入口）。
+
+核心文件：
+1) src/cli/main.cpp
+- 核心代码：main()。
+- 功能：构建 CLI app 并解析命令行参数。
+
+2) src/cli/app/build_app.hpp + build_app.cpp
+- 核心函数：skymapf::cli::build_app()
+- 功能：注册 CLI 子命令与选项。
+
+3) src/cli/commands/register.hpp + register_version.cpp
+- 核心函数：register_version(CLI::App& app)
+- 功能：注册 -v/--version。
+
+结论：
+- 目前 CLI 功能很轻，只有版本输出。后续可在 build_app.cpp 中继续注册更多命令（如 generate/read/solve）。
+
+
+src/core/
+~~~~~~~~~
+定位：核心业务库。所有数据模型、生成器、IO、接口都在这里。
+
+结构：
+- include/skymapf/... 头文件（公开 API）
+- src/... 对应实现
+
+建议阅读顺序：
+1. skymapf.hpp（总入口）
+2. common -> world -> task/scenario/instance
+3. generator
+4. io
+5. solver
+
+
+四、src/core/include/skymapf/common（基础类型层）
+-----------------------------------------------
+定位：所有模块的底层类型和坐标转换规则。
+
+核心文件：
+1) common/ids.hpp
+- 内容：WorldId/TaskId/ScenarioId/InstanceId/AgentId/CellIndex/TimeStep 等类型别名。
+- 意义：统一强类型 ID 语义。
+
+2) common/space.hpp
+- 核心类型：SpaceSpec、GridShape2D、GridShape3D。
+- 核心函数：
+  - SpaceSpec::make_2d(cols, rows)
+  - SpaceSpec::make_3d(cols, rows, layers)
+  - SpaceSpec::is_valid()
+  - cell_count(spec)
+- 意义：定义地图空间维度（2D/3D）与有效性。
+
+3) common/index.hpp
+- 核心函数：
+  - is_in_bounds(coord, shape)
+  - to_index(coord, shape)
+  - to_coord_2d(index, shape)
+  - to_coord_3d(index, shape)
+- 意义：坐标与线性索引相互转换，是地图和任务的基础。
+
+4) common/move.hpp
+- 核心常量：
+  - kMoveDelta4（2D 四邻域）
+  - kMoveDelta6（3D 六邻域）
+- 意义：几何邻接规则基准。
+
+5) common/time.hpp / units.hpp / types.hpp
+- 时间步和单位定义、公共头聚合。
+
+
+五、world 模块（地图模型与连通性）
+--------------------------------
+目录：
+- include/skymapf/world/*
+- src/world/*
+
+定位：
+- 负责“地图是什么、哪些格子可走、邻接关系是什么”。
+
+核心文件与函数：
+
+1) world/model.hpp + src/world/model.cpp
+- 核心类：world::WorldModel
+- 核心能力：
+  - 地图尺寸：space_spec() / cell_count()
+  - 可走查询：is_walkable(...)
+  - 可走设置：set_walkable(...)
+  - 邻居查询：neighbors(...)
+  - 边编辑：add_directed_edge / add_bidirectional_edge / clear_edges
+- 设计关键点：
+  - WorldModel 自身不硬编码存储细节，依赖 occupancy 与 connectivity 策略对象。
+
+2) world/occupancy.hpp
+- 核心接口：IOccupancyStore
+- 默认实现：DenseOccupancyStore（字节数组存 walkable）
+- 作用：决定“格子是否可走”如何存储。
+
+3) world/connectivity.hpp + src/world/connectivity.cpp
+- 核心接口：IConnectivityGraph
+- 默认实现：AdjacencyListGraph（邻接表）
+- 可选实现：AdjacencyMatrixGraph（邻接矩阵）
+- 工具函数：geometric_neighbors(spec, from)
+- 作用：定义“从某格子能走到哪些格子”。
+
+4) world/validation.hpp + src/world/validation.cpp
+- 核心类：ConnectivityValidator
+- 核心函数：ConnectivityValidator::validate(world)
+- 算法：BFS 统计可走区域连通分量，要求恰好 1 个连通块。
+
+
+六、task / scenario / instance（需求与执行建模）
+---------------------------------------------
+
+task 模块
+~~~~~~~~~
+目录：
+- include/skymapf/task/*
+- src/task/*
+
+核心文件：
+1) task/model.hpp + src/task/model.cpp
+- 核心类型：
+  - SequenceModel（checkpoints 序列）
+  - AgentTaskEntry（agent_id + start_time + route + goal_behavior）
+  - TaskModel（多智能体任务集合）
+- 核心函数：
+  - add_agent_entry / upsert_agent_entry
+  - find_agent_entry
+  - earliest_start_time
+
+2) task/policy.hpp
+- 核心枚举：GoalArrivalBehavior
+  - DisappearAtGoal
+  - StayAtGoal
+
+3) task/validation.hpp + src/task/validation.cpp
+- 核心函数：
+  - validate_task(task, world)
+  - validate_tasks(tasks, agents, world, enforce_one_active_task_per_agent)
+  - validate_generated_task(task, world, options)
+- 作用：保证任务语义合法（checkpoint 合法、agent 不重复、可走性正确等）。
+
+4) task/runtime.hpp
+- 核心类型：TaskRuntimeState、AgentTaskRuntimeState
+- 作用：表达运行时执行进度（当前为数据结构，尚未绑定调度引擎）。
+
+
+scenario 模块
+~~~~~~~~~~~~~
+目录：
+- include/skymapf/scenario/model.hpp
+- src/scenario/model.cpp
+
+定位：
+- 组织层模型，一个 Scenario 包含：
+  - 一个 world
+  - 一个 agent 列表
+  - 多个 task
+
+核心函数：
+- ScenarioModel::export_instances(first_instance_id)
+  - 把每个 Task 导出成一个 Instance（可执行输入）。
+- export_instance_by_task_id(task_id, ...)
+
+
+instance 模块
+~~~~~~~~~~~~~
+目录：
+- include/skymapf/instance/model.hpp
+- src/instance/model.cpp
+
+定位：
+- 求解输入模型，绑定：
+  - 静态 world
+  - 静态 agents
+  - 单个 task
+
+核心函数：
+- rebuild_resolved_bindings()
+  - 计算 agent 与 task entry 的索引映射。
+- has_consistent_assignments()
+  - 检查绑定是否一致。
+- to_scenario(...)
+  - 把单 instance 反向包装为 scenario。
+
+
+七、generator 模块（自动生成能力）
+---------------------------------
+目录：
+- include/skymapf/generator/*
+- src/generator/*
+- src/generator/strategy/*
+
+定位：
+- 提供可插拔策略的“生成器编排层”。
+
+1) world_generator
+- 文件：
+  - generator/world_generator.hpp
+  - src/generator/world_generator.cpp
+- 核心函数：WorldGenerator::generate(options)
+- 主流程：
+  1. 创建 WorldModel
+  2. 应用障碍布局策略 obstacle_strategy
+  3. 应用边生成策略 edge_strategy
+  4. 做连通性验证，失败抛异常
+
+2) obstacle_layout_strategy
+- 文件：
+  - generator/strategy/obstacle_layout_strategy.hpp
+  - src/generator/strategy/obstacle_layout_strategy.cpp
+- 默认实现：ConnectedCarvingObstacleLayoutStrategy::apply(...)
+- 算法思路：
+  - 先全阻塞
+  - 随机选种子格子设为可走
+  - 从前沿不断雕刻，直到达到目标可走比例
+- 目标：保证可走区连通。
+
+3) edge_generation_strategy
+- 文件：
+  - generator/strategy/edge_generation_strategy.hpp
+  - src/generator/strategy/edge_generation_strategy.cpp
+- 默认实现：BidirectionalGeometricEdgeGenerationStrategy::apply(...)
+- 算法思路：按几何邻接（2D 四邻域/3D 六邻域）建双向边。
+
+4) task_generator
+- 文件：
+  - generator/task_generator.hpp
+  - src/generator/task_generator.cpp
+- 核心函数：TaskGenerator::generate(world, options)
+- 主流程：
+  1. 收集可走格
+  2. 采样/构建各 agent 路径序列
+  3. 设定 start_time
+  4. 调用 validate_generated_task 验证
+
+5) route_sampling_strategy
+- 文件：
+  - generator/strategy/route_sampling_strategy.hpp
+  - src/generator/strategy/route_sampling_strategy.cpp
+- 默认实现：RandomReachableRouteSamplingStrategy::sample(...)
+- 行为：随机生成 checkpoint 序列（长度在 [2, max_sequence_size]）。
+
+6) scenario_generator
+- 文件：
+  - generator/scenario_generator.hpp
+  - src/generator/scenario_generator.cpp
+- 核心函数：ScenarioGenerator::generate(options)
+- 功能：一键编排 world + tasks + agents -> ScenarioModel。
+
+7) instance_generator
+- 文件：
+  - generator/instance_generator.hpp
+  - src/generator/instance_generator.cpp
+- 核心函数：InstanceGenerator::generate(options)
+- 功能：一键编排 world + task + agents -> InstanceModel。
+
+
+八、io 模块（输入输出与数据集）
+-----------------------------
+目录：
+- include/skymapf/io/*
+- src/io/*
+
+核心文件：
+1) io/dataset_io.hpp + src/io/dataset_io.cpp
+- 核心结构体：
+  - DatasetMeta
+  - DatasetData（meta + world + tasks）
+  - DatasetManifest（checksum/task_count）
+  - DatasetReadResult（含 read status）
+
+- 核心函数：
+  - DatasetIO::write_dataset(data, directory, ...)
+    输出：
+    - meta.json
+    - world.json
+    - tasks.json
+
+  - DatasetIO::read_dataset(directory, ...)
+    读取并验证 checksum。
+
+  - DatasetIO::make_scenario_model(data, ...)
+  - DatasetIO::make_instances(data, ...)
+  - DatasetIO::read_dataset_as_instances(directory, ...)
+
+- 关键内部函数（dataset_io.cpp）：
+  - world_to_json / world_from_json
+  - task_to_json / task_from_json
+
+2) io/io.hpp
+- 聚合头，仅 include dataset_io.hpp。
+
+
+九、solver 模块（求解器接口层）
+-----------------------------
+目录：
+- include/skymapf/solver/*
+
+定位：
+- 目前只定义接口，供后续接入具体算法（CBS、ECBS、ILP、RL 等）。
+
+核心文件：
+1) solver/i_solver.hpp
+- 核心类型：
+  - SolverInfo / SolveOptions / SolveInstance / SolveResult / Plan
+- 核心接口：
+  - class ISolver
+  - virtual SolveResult solve(const SolveInstance&, const SolveOptions&) = 0
+
+2) solver/i_solver_factory.hpp
+- 核心接口：
+  - registered_solver_names()
+  - is_registered(name)
+  - create(name)
+
+说明：
+- 当前 src/core/src 下没有具体 solver 实现类。
+- 这意味着你要真正“算路径”，需要自己新增一个实现 ISolver 的类。
+
+
+十、bindings/python（Python 绑定）
+--------------------------------
+目录：
+- bindings/python/*
+
+核心文件：
+1) module.cpp
+- 核心宏：PYBIND11_MODULE(skymapf, m)
+- 作用：Python 模块入口。
+
+2) bind_version.cpp
+- 功能：绑定 __version__。
+
+3) bind_common.cpp
+- 功能：绑定 common 子模块：
+  - SpaceSpec / GridShape2D / GridShape3D
+  - CellCoord2D / CellCoord3D
+  - MoveDir4 / MoveDir6
+  - is_in_bounds / to_index / to_coord 等
+
+说明：
+- 当前未绑定 world/task/generator/io/solver 全量 API。
+- 如果你想在 Python 中直接调用生成器，需要继续扩展绑定文件。
+
+
+十一、example（示例）
+-------------------
+目录：
+- example/1_helloworld/main.cpp
+- example/2_CreateScenario/main.cpp
+
+用途：
+1) 1_helloworld：检查链接与版本输出是否正常。
+2) 2_CreateScenario：展示 ScenarioGenerator 一键生成流程。
+
+对新手最有价值的是 2_CreateScenario，它能快速理解“数据是如何被拼起来的”。
+
+
+十二、test（测试）
+----------------
+目录：
+- test/CMakeLists.txt
+- test/common/version_test.cpp
+
+说明：
+- 当前测试覆盖较少，主要是版本 smoke test 占位。
+- 真正开发算法时应补齐 world/task/generator/io/solver 单元测试。
+
+
+十三、cmake 与 scripts
+---------------------
+
+1) cmake/deps.cmake
+- 作用：依赖发现与回退拉取（nlohmann_json、CLI11、Catch2、pybind11）。
+- 策略：优先系统安装依赖，找不到再 FetchContent。
+
+2) scripts/build_*.sh|bat
+- 作用：跨平台构建辅助脚本。
+- 用途：快速统一构建流程，不必手动敲长 CMake 命令。
+
+
+十四、从“看懂代码”到“开始开发”的最短路径
+--------------------------------------
+推荐阅读顺序（按优先级）：
+1) example/2_CreateScenario/main.cpp
+2) src/core/src/generator/scenario_generator.cpp
+3) src/core/src/generator/world_generator.cpp
+4) src/core/src/generator/task_generator.cpp
+5) src/core/src/world/model.cpp + validation.cpp
+6) src/core/src/io/dataset_io.cpp
+7) src/core/include/skymapf/solver/i_solver.hpp
+
+你会得到的完整认知链：
+SpaceSpec -> WorldModel -> TaskModel -> Scenario/Instance
+-> Generator 自动构造 -> DatasetIO 落盘/读盘 -> Solver 接口消费
+
+
+十五、二次开发入口建议
+--------------------
+
+场景 A：你要实现真正的 MAPF 算法
+1) 新建 solver 实现类（如 CbsSolver）实现 ISolver::solve。
+2) 读取 InstanceModel 的 world/task/agents。
+3) 输出 SolveResult::plan（per-agent cell path）。
+4) 若需要多算法切换，再实现一个 SolverFactory。
+
+场景 B：你要改变地图生成逻辑
+1) 实现 IObstacleLayoutStrategy 或 IEdgeGenerationStrategy。
+2) 在 WorldGenerationOptions 中注入你的策略对象。
+
+场景 C：你要改变任务路径采样逻辑
+1) 实现 IRouteSamplingStrategy。
+2) 在 TaskGenerationOptions 中注入 route_sampling_strategy。
+
+场景 D：你要用 Python 调用更多能力
+1) 在 bindings/python 下新增 bind_world.cpp / bind_task.cpp 等。
+2) 在 module.cpp 中注册新的 bind_xxx(m)。
+
+
+十六、当前版本的关键结论（务必知道）
+----------------------------------
+1) 这是一个结构清晰的“MAPF 基础框架库”，不是现成可直接求解的完整产品。
+2) 生成器、数据模型、IO 已有较完整雏形，适合作为研究或工程起点。
+3) solver 还缺落地实现，是最主要待补环节。
+4) Python 绑定目前偏基础，需要按需求扩展。
+
+
+附录：常看入口文件清单
+----------------------
+- src/core/include/skymapf/skymapf.hpp
+- src/core/include/skymapf/world/model.hpp
+- src/core/src/generator/world_generator.cpp
+- src/core/src/generator/task_generator.cpp
+- src/core/src/io/dataset_io.cpp
+- src/core/include/skymapf/solver/i_solver.hpp
+- example/2_CreateScenario/main.cpp
+
