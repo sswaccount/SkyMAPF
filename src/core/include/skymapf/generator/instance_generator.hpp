@@ -70,8 +70,7 @@ public:
      * Flow:
      * 1. Generate world from world_gen_options.
      * 2. Generate one task from task_gen_options.
-     * 3. Build static agents from task entries.
-     * 4. Pack world + agents + task into one InstanceModel.
+     * 3. Pack world + task into one InstanceModel.
      *
      * @param options Instance generation options.
      * @return Generated instance model.

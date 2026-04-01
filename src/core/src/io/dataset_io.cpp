@@ -5,13 +5,12 @@
 #include "skymapf/io/dataset_io.hpp"
 
 #include <fstream>
-#include <iomanip>
 #include <memory>
-#include <sstream>
 
 #include <nlohmann/json.hpp>
 
 #include "skymapf/common/space.hpp"
+#include "skymapf/utils/checksum.hpp"
 #include "skymapf/utils/random_tool.hpp"
 #include "skymapf/world/occupancy.hpp"
 
@@ -24,18 +23,6 @@ using json = nlohmann::json;
 constexpr const char* kMetaFile = "meta.json";
 constexpr const char* kWorldFile = "world.json";
 constexpr const char* kTasksFile = "tasks.json";
-
-std::string fnv1a64_hex(std::string_view text) {
-    // A lightweight non-cryptographic checksum is sufficient for corruption detection.
-    std::uint64_t hash = 14695981039346656037ull;
-    for (const auto ch : text) {
-        hash ^= static_cast<std::uint8_t>(ch);
-        hash *= 1099511628211ull;
-    }
-    std::ostringstream oss;
-    oss << std::hex << std::setfill('0') << std::setw(16) << hash;
-    return oss.str();
-}
 
 std::string goal_behavior_to_string(task::GoalArrivalBehavior behavior) {
     switch (behavior) {
@@ -143,7 +130,7 @@ json task_to_json(const task::TaskModel& task_data) {
     j["name"] = task_data.name();
 
     json sequences = json::array();
-    for (const auto& seq : task_data.agent_sequences()) {
+    for (const auto& seq : task_data.agent_entries()) {
         sequences.push_back({
             {"agent_id", seq.agent_id},
             {"start_time", seq.start_time},
@@ -162,7 +149,7 @@ std::optional<task::TaskModel> task_from_json(const json& j, std::string* error_
         }
         return std::nullopt;
     }
-    task::TaskModel task_data = task::TaskModel::create(
+    task::TaskModel task_data = task::TaskModel(
         j.at("task_id").get<common::TaskId>(),
         j.value("name", std::string{})
     );
@@ -183,7 +170,7 @@ std::optional<task::TaskModel> task_from_json(const json& j, std::string* error_
         const auto checkpoints = seq.at("checkpoints").get<std::vector<common::CellIndex>>();
         task::SequenceModel visit_sequence;
         visit_sequence.checkpoints = checkpoints;
-        task_data.upsert_agent_sequence(agent_id, std::move(visit_sequence), start_time, goal_behavior);
+        task_data.upsert_agent_entry(agent_id, std::move(visit_sequence), start_time, goal_behavior);
     }
     return task_data;
 }
@@ -243,7 +230,7 @@ bool DatasetIO::write_dataset(
     for (const auto& task_data : data.tasks) {
         tasks_json.push_back(task_to_json(task_data));
     }
-    const auto checksum = fnv1a64_hex(world_json.dump() + tasks_json.dump());
+    const auto checksum = utils::fnv1a64_hex(world_json.dump() + tasks_json.dump());
 
     DatasetManifest manifest;
     manifest.task_count = static_cast<std::uint64_t>(data.tasks.size());
@@ -318,7 +305,7 @@ std::optional<DatasetReadResult> DatasetIO::read_dataset(
         meta_json->value("task_count", static_cast<std::uint64_t>(result.data.tasks.size()));
 
     result.status.stored_checksum = result.manifest.checksum;
-    result.status.recomputed_checksum = fnv1a64_hex(world_json->dump() + tasks_json->dump());
+    result.status.recomputed_checksum = utils::fnv1a64_hex(world_json->dump() + tasks_json->dump());
     result.status.checksum_valid = result.status.stored_checksum.empty()
         ? false
         : (result.status.recomputed_checksum == result.status.stored_checksum);
@@ -337,7 +324,6 @@ scenario::ScenarioModel DatasetIO::make_scenario_model(
         scenario_id,
         std::move(name),
         data.world,
-        {},
         data.tasks
     );
 }

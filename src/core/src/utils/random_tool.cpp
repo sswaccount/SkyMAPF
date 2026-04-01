@@ -57,6 +57,10 @@ std::uint64_t RandomTool::next_name_value() noexcept {
     return splitmix64(name_rng()());
 }
 
+std::uint64_t RandomTool::next_gen_value() noexcept {
+    return normalize_seed(splitmix64(generator_rng()()));
+}
+
 std::string RandomTool::trace_string() const {
     std::ostringstream oss;
     oss << "RandomTool(root_seed=" << root_seed_

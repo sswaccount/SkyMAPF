@@ -18,6 +18,9 @@ public:
     /**
      * @brief Builds or updates the world's connectivity policy.
      *
+     * Implementations should only update graph edges and should not mutate
+     * world dimensions or walkability state.
+     *
      * @param world Target world model whose connectivity policy may be replaced.
      */
     virtual void apply(world::WorldModel& world) const = 0;

@@ -43,7 +43,7 @@ TaskValidationResult validate_task(const TaskModel& task, const world::WorldMode
 
     std::unordered_set<common::AgentId> seen_agents;
     seen_agents.reserve(task.agent_count());
-    for (const auto& seq : task.agent_sequences()) {
+    for (const auto& seq : task.agent_entries()) {
         const auto [_, inserted] = seen_agents.insert(seq.agent_id);
         if (!inserted) {
             add_issue(
@@ -114,7 +114,7 @@ TaskValidationResult validate_tasks(
     assigned_agents.reserve(tasks.size());
 
     for (const auto& task : tasks) {
-        for (const auto& seq : task.agent_sequences()) {
+        for (const auto& seq : task.agent_entries()) {
             if (known_agents.find(seq.agent_id) == known_agents.end()) {
                 add_issue(
                     aggregate,
@@ -167,7 +167,7 @@ TaskValidationResult validate_generated_task(
         );
     }
 
-    const auto& assignments = task.agent_sequences();
+    const auto& assignments = task.agent_entries();
     for (std::size_t i = 0; i < assignments.size(); ++i) {
         const auto& assignment = assignments[i];
         if (assignment.start_time > options.max_start_time) {

@@ -4,11 +4,16 @@
  */
 #pragma once
 
-#include <cstdint>
-
 #include "skymapf/world/model.hpp"
 
 namespace skymapf::generator {
+
+/**
+ * @brief Context visible to obstacle layout strategies.
+ */
+struct ObstacleLayoutContext {
+    double obstacle_density{0.2};  ///< Target obstacle ratio in [0, 1).
+};
 
 /**
  * @brief Strategy interface for generating obstacle layouts.
@@ -23,14 +28,12 @@ public:
      * Implementations may mutate walkability of any valid cell in @p world.
      *
      * @param world Target world model to mutate.
-     * @param obstacle_density Obstacle ratio in [0, 1).
-     * @param random_seed Deterministic pseudo-random seed.
+     * @param context Obstacle generation context and limits.
      * @return True when generation succeeds; false when no valid layout can be produced.
      */
     virtual bool apply(
         world::WorldModel& world,
-        double obstacle_density,
-        std::uint64_t random_seed
+        const ObstacleLayoutContext context
     ) const = 0;
 };
 
@@ -46,14 +49,12 @@ public:
      * @brief Generates one connected walkable region under the requested density.
      *
      * @param world Target world model to mutate.
-     * @param obstacle_density Obstacle ratio in [0, 1).
-     * @param random_seed Deterministic pseudo-random seed.
+     * @param context Obstacle generation context and limits.
      * @return True when at least one walkable cell is carved; false otherwise.
      */
     bool apply(
         world::WorldModel& world,
-        double obstacle_density,
-        std::uint64_t random_seed
+        const ObstacleLayoutContext context
     ) const override;
 };
 

@@ -40,6 +40,7 @@ public:
 
     std::uint64_t next_id_value() noexcept;
     std::uint64_t next_name_value() noexcept;
+    std::uint64_t next_gen_value() noexcept;
 
     std::string trace_string() const;
 

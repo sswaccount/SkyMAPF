@@ -37,10 +37,9 @@ struct TaskGenerationOptions {
      * @param seed Random seed used by generation routines.
      */
     explicit TaskGenerationOptions(
-        std::size_t count,
-        std::uint64_t seed = 0
+        std::size_t count
     )
-        : agent_count(count), random_seed(seed) {}
+        : agent_count(count) {}
 
     /**
      * @brief Constructs options with explicit sequence and start-time constraints.
@@ -52,12 +51,10 @@ struct TaskGenerationOptions {
      */
     TaskGenerationOptions(
         std::size_t count,
-        std::uint64_t seed,
         std::uint32_t max_seq_size,
         common::TimeStep max_start
     )
         : agent_count(count),
-          random_seed(seed),
           max_sequence_size(max_seq_size),
           max_start_time(max_start) {}
 
@@ -72,13 +69,11 @@ struct TaskGenerationOptions {
      */
     TaskGenerationOptions(
         std::size_t count,
-        std::uint64_t seed,
         std::uint32_t max_seq_size,
         common::TimeStep max_start,
         std::shared_ptr<IRouteSamplingStrategy> sampling_strategy
     )
         : agent_count(count),
-          random_seed(seed),
           max_sequence_size(max_seq_size),
           max_start_time(max_start),
           route_sampling_strategy(std::move(sampling_strategy)) {}
@@ -89,12 +84,12 @@ struct TaskGenerationOptions {
     std::optional<common::TaskId> task_id;
     /// Optional explicit task name. When missing, generator auto-completes it.
     std::optional<std::string> task_name;
-    /// Random seed controlling deterministic generation behavior.
-    std::uint64_t random_seed{0};
     /// Maximum allowed visit-sequence size for each generated agent.
     std::uint32_t max_sequence_size{2};
     /// Maximum allowed generated start time for each agent.
     common::TimeStep max_start_time{0};
+    /// Occupancy behavior applied after generated agents reach goal.
+    task::GoalArrivalBehavior goal_arrival_behavior{task::GoalArrivalBehavior::StayAtGoal};
     /// Optional route sampling strategy; default strategy is used when null.
     std::shared_ptr<IRouteSamplingStrategy> route_sampling_strategy;
 };

@@ -4,7 +4,6 @@
  */
 #include "skymapf/generator/world_generator.hpp"
 
-#include <random>
 #include <stdexcept>
 #include "skymapf/utils/default_naming.hpp"
 #include "skymapf/utils/random_tool.hpp"
@@ -29,16 +28,13 @@ world::WorldModel WorldGenerator::generate(const WorldGenerationOptions& options
         edge_strategy = std::make_shared<DefaultEdgeGenerationStrategy>();
     }
 
-    const auto obstacle_seed = options.random_seed == 0
-        ? static_cast<std::uint64_t>(utils::RandomTool::instance().generator_rng()())
-        : options.random_seed;
-    if (!obstacle_strategy->apply(world_model, options.obstacle_density, obstacle_seed)) {
+    if (!obstacle_strategy->apply(world_model, ObstacleLayoutContext{options.obstacle_density})) {
         throw std::runtime_error("World generation failed: obstacle strategy could not produce a layout.");
     }
     edge_strategy->apply(world_model);
 
-    const auto connectivity_status = world::ConnectivityValidator::validate(world_model);
-    if (connectivity_status != world::ConnectivityValidationStatus::Success) {
+    const auto validation = world::ConnectivityValidator::validate(world_model);
+    if (validation != world::ConnectivityValidationStatus::Success) {
         throw std::runtime_error("World generation failed: generated world is not connected.");
     }
 

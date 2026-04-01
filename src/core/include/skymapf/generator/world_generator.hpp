@@ -5,7 +5,6 @@
 #pragma once
 
 #include <memory>
-#include <cstdint>
 #include <optional>
 #include <string>
 #include <utility>
@@ -52,13 +51,13 @@ struct WorldGenerationOptions {
     WorldGenerationOptions(
         common::SpaceSpec spec,
         double density,
-        std::shared_ptr<IObstacleLayoutStrategy> obstacle_gen,
-        std::shared_ptr<IEdgeGenerationStrategy> edge_gen
+        std::shared_ptr<IObstacleLayoutStrategy> obstacle_strategy,
+        std::shared_ptr<IEdgeGenerationStrategy> edge_strategy
     )
         : space_spec(std::move(spec)),
           obstacle_density(density),
-          obstacle_strategy(std::move(obstacle_gen)),
-          edge_strategy(std::move(edge_gen)) {}
+          obstacle_strategy(std::move(obstacle_strategy)),
+          edge_strategy(std::move(edge_strategy)) {}
 
     /// Discrete world dimensions used for generation.
     common::SpaceSpec space_spec{common::SpaceSpec::make_2d(16, 16)};
@@ -66,8 +65,6 @@ struct WorldGenerationOptions {
     std::optional<common::WorldId> world_id;
     /// Optional explicit world name. When missing, generator auto-completes it.
     std::optional<std::string> world_name;
-    /// Optional deterministic seed for world generation.
-    std::uint64_t random_seed{0};
     /// Obstacle ratio in [0, 1).
     double obstacle_density{0.2};
     /// Optional obstacle strategy; default connected-carving strategy is used when null.

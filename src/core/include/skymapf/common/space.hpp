@@ -5,6 +5,7 @@
 #pragma once
 
 #include <cstdint>
+#include <nlohmann/json.hpp>
 
 #include "ids.hpp"
 
@@ -12,21 +13,21 @@ namespace skymapf::common {
 
 /// Classifies whether a world uses 2D or 3D discrete space.
 enum class SpaceKind {
-    Plane2D,
-    Space3D
+    Plane2D,  ///< Grid constrained to a single layer.
+    Space3D   ///< Grid with one or more traversable layers.
 };
 
 /// Stores 2D grid shape in (cols, rows) order.
 struct GridShape2D {
-    std::int32_t cols{0};
-    std::int32_t rows{0};
+    std::int32_t cols{0};  ///< Number of columns along the x-axis.
+    std::int32_t rows{0};  ///< Number of rows along the y-axis.
 };
 
 /// Stores 3D grid shape in (cols, rows, layers) order.
 struct GridShape3D {
-    std::int32_t cols{0};
-    std::int32_t rows{0};
-    std::int32_t layers{0};
+    std::int32_t cols{0};    ///< Number of columns along the x-axis.
+    std::int32_t rows{0};    ///< Number of rows along the y-axis.
+    std::int32_t layers{0};  ///< Number of layers along the z-axis.
 };
 
 /**
@@ -114,6 +115,22 @@ public:
         return layers_ > 0;
     }
 
+    /**
+     * @brief Serializes a space specification to ordered JSON.
+     *
+     * @param j Output JSON object.
+     * @param space_spec Space specification to serialize.
+     */
+    friend void to_json(nlohmann::ordered_json& j, const SpaceSpec& space_spec);
+
+    /**
+     * @brief Deserializes a space specification from JSON.
+     *
+     * @param j Input JSON object.
+     * @param space_spec Output space specification.
+     */
+    friend void from_json(const nlohmann::json& j, SpaceSpec& space_spec);
+
 private:
     SpaceKind kind_{SpaceKind::Plane2D};
     std::int32_t cols_{0};
@@ -121,10 +138,22 @@ private:
     std::int32_t layers_{1};
 };
 
+/**
+ * @brief Returns whether a 2D shape is valid.
+ *
+ * @param shape Shape dimensions in (cols, rows) order.
+ * @return True if both dimensions are positive.
+ */
 inline bool is_valid(GridShape2D shape) noexcept {
     return shape.cols > 0 && shape.rows > 0;
 }
 
+/**
+ * @brief Returns whether a 3D shape is valid.
+ *
+ * @param shape Shape dimensions in (cols, rows, layers) order.
+ * @return True if all dimensions are positive.
+ */
 inline bool is_valid(GridShape3D shape) noexcept {
     return shape.cols > 0 && shape.rows > 0 && shape.layers > 0;
 }

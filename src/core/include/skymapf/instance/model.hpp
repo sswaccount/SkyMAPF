@@ -1,15 +1,14 @@
 /**
  * @file instance.hpp
- * @brief Defines executable instance model (world + agents + single task).
+ * @brief Defines executable instance model (world + single task).
  */
 #pragma once
 
 #include <cstddef>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
-#include "skymapf/agent/model.hpp"
 #include "skymapf/common/ids.hpp"
 #include "skymapf/task/model.hpp"
 #include "skymapf/task/runtime.hpp"
@@ -28,17 +27,15 @@ namespace skymapf::instance {
  *
  * One instance binds:
  * - static world
- * - static agent identities
  * - one task demand aggregate
  *
- * It also maintains resolved agent-task binding metadata so future
- * solver/runtime modules can consume assignment relations directly.
+ * It maintains lightweight agent-task binding metadata derived from task entries.
  */
 class InstanceModel {
 public:
+    /// One resolved view item mapping one agent id to one task entry index.
     struct ResolvedAgentTask {
         common::AgentId agent_id{0};
-        std::size_t agent_index{0};
         std::size_t task_entry_index{0};
     };
 
@@ -53,48 +50,16 @@ public:
     InstanceModel(
         common::InstanceId instance_id,
         world::WorldModel world,
-        std::vector<agent::AgentModel> agents,
         task::TaskModel task,
         std::string name = {}
     )
         : id_(instance_id),
           name_(name.empty() ? utils::DefaultNaming::next_instance_name() : std::move(name)),
           world_(std::move(world)),
-          agents_(std::move(agents)),
           task_(std::move(task)) {
         rebuild_resolved_bindings();
     }
 
-    InstanceModel(
-        common::InstanceId instance_id,
-        world::WorldModel world,
-        task::TaskModel task,
-        std::string name = {}
-    )
-        : InstanceModel(
-            instance_id,
-            std::move(world),
-            derive_agents_from_task(task),
-            std::move(task),
-            std::move(name)
-        ) {}
-
-    static InstanceModel create(
-        common::InstanceId instance_id,
-        world::WorldModel world,
-        std::vector<agent::AgentModel> agents,
-        task::TaskModel task,
-        std::string name = {}
-    ) {
-        return InstanceModel(
-            instance_id,
-            std::move(world),
-            std::move(agents),
-            std::move(task),
-            std::move(name)
-        );
-    }
-
     static InstanceModel create(
         common::InstanceId instance_id,
         world::WorldModel world,
@@ -104,7 +69,6 @@ public:
         return InstanceModel(
             instance_id,
             std::move(world),
-            derive_agents_from_task(task),
             std::move(task),
             std::move(name)
         );
@@ -121,13 +85,6 @@ public:
     world::WorldModel& world() noexcept { return world_; }
     void set_world(world::WorldModel world) { world_ = std::move(world); }
 
-    const std::vector<agent::AgentModel>& agents() const noexcept { return agents_; }
-    std::vector<agent::AgentModel>& agents() noexcept { return agents_; }
-    void set_agents(std::vector<agent::AgentModel> agents) {
-        agents_ = std::move(agents);
-        rebuild_resolved_bindings();
-    }
-
     const task::TaskModel& task() const noexcept { return task_; }
     task::TaskModel& task() noexcept { return task_; }
     void set_task(task::TaskModel task) {
@@ -135,7 +92,6 @@ public:
         rebuild_resolved_bindings();
     }
 
-    const agent::AgentModel* find_agent(common::AgentId agent_id) const noexcept;
     const task::AgentTaskEntry* find_agent_task(common::AgentId agent_id) const noexcept;
     const ResolvedAgentTask* find_assignment(common::AgentId agent_id) const noexcept;
     const std::vector<ResolvedAgentTask>& assignments() const noexcept { return resolved_bindings_; }
@@ -159,19 +115,9 @@ public:
     ) const;
 
 private:
-    static std::vector<agent::AgentModel> derive_agents_from_task(const task::TaskModel& task) {
-        std::vector<agent::AgentModel> derived_agents;
-        derived_agents.reserve(task.agent_entries().size());
-        for (const auto& entry : task.agent_entries()) {
-            derived_agents.emplace_back(entry.agent_id, utils::DefaultNaming::next_agent_name());
-        }
-        return derived_agents;
-    }
-
     common::InstanceId id_;
     std::string name_;
     world::WorldModel world_;
-    std::vector<agent::AgentModel> agents_;
     task::TaskModel task_;
     std::vector<ResolvedAgentTask> resolved_bindings_;
 };

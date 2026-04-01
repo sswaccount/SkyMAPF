@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <nlohmann/json.hpp>
 
 #include "../common/coord.hpp"
 #include "../common/ids.hpp"
@@ -30,7 +31,14 @@ public:
     /// Factory function for creating connectivity policies.
     using ConnectivityFactory = std::function<ConnectivityGraphPtr()>;
 
-    /// Constructs a default 1x1 walkable 2D world.
+    /**
+     * @brief Constructs a world with the given space specification.
+     *
+     * Default occupancy and connectivity factories are used when
+     * no custom policy is injected.
+     *
+     * @param space_spec Discrete world dimensions.
+     */
     explicit WorldModel(common::SpaceSpec space_spec);
 
     /**
@@ -39,8 +47,6 @@ public:
      * @param space_spec Discrete world dimensions.
      * @param occupancy_factory Factory for creating occupancy storage.
      * @param connectivity_factory Factory for creating connectivity policy.
-     * @param id Optional explicit world id; auto-generated when missing.
-     * @param name Optional explicit world display name; auto-generated when missing.
      */
      explicit WorldModel(
         common::SpaceSpec space_spec,
@@ -76,6 +82,12 @@ public:
     bool has_name() const noexcept { return !name_.empty(); }
     /// Sets display name.
     void set_name(std::string name) { name_ = std::move(name); }
+    /// Returns additional world description text for metadata and export.
+    const std::string& info() const noexcept { return info_; }
+    /// Returns whether additional world description text is non-empty.
+    bool has_info() const noexcept { return !info_.empty(); }
+    /// Sets additional world description text.
+    void set_info(std::string info) { info_ = std::move(info); }
 
     /// Returns current discrete world dimensions.
     const common::SpaceSpec& space_spec() const noexcept { return space_spec_; }
@@ -99,6 +111,8 @@ public:
     bool is_walkable(const common::CellCoord2D& coord) const noexcept;
     /// Returns whether the 3D coordinate is in-bounds and walkable.
     bool is_walkable(const common::CellCoord3D& coord) const noexcept;
+    /// Returns all currently walkable cell indices in ascending index order.
+    std::vector<common::CellIndex> walkable_cells() const;
 
     /// Sets walkability by linear cell index.
     void set_walkable(common::CellIndex index, bool walkable);
@@ -155,9 +169,26 @@ public:
     /// Returns whether directed edge (from -> to) exists for 3D coordinates.
     bool has_directed_edge(const common::CellCoord3D& from, const common::CellCoord3D& to) const noexcept;
 
+    /**
+     * @brief Serializes a world model to ordered JSON.
+     *
+     * @param j Output JSON object.
+     * @param world_model World model to serialize.
+     */
+    friend void to_json(nlohmann::ordered_json& j, const WorldModel& world_model);
+
+    /**
+     * @brief Deserializes a world model from JSON.
+     *
+     * @param j Input JSON object.
+     * @param world_model Output world model.
+     */
+    friend void from_json(const nlohmann::json& j, WorldModel& world_model);
+
 private:
     common::WorldId id_;
     std::string name_;
+    std::string info_;
     common::SpaceSpec space_spec_;
     OccupancyFactory occupancy_factory_;
     ConnectivityFactory connectivity_factory_;
