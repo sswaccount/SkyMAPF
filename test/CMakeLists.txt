@@ -1,3 +1,9 @@
+file(GLOB_RECURSE SKYMAPF_TEST_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+)
+
+message(STATUS "SKYMAPF_TEST_SOURCES=${SKYMAPF_TEST_SOURCES}")
+
 foreach(test_src IN LISTS SKYMAPF_TEST_SOURCES)
     file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_src}")
     string(REGEX REPLACE "[/\\\\]" "__" target_suffix "${rel_path}")

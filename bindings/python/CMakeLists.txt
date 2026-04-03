@@ -16,8 +16,15 @@ target_link_libraries(skymapf_py
 set_target_properties(skymapf_py PROPERTIES
     OUTPUT_NAME "skymapf"
 )
-
-install(TARGETS skymapf_py
-    LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR}
-    RUNTIME DESTINATION ${SKBUILD_PLATLIB_DIR}
-)
+include(GNUInstallDirs)
+if(DEFINED SKBUILD_PLATLIB_DIR)
+    install(TARGETS skymapf_py
+        LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR}
+        RUNTIME DESTINATION ${SKBUILD_PLATLIB_DIR}
+    )
+else()
+    install(TARGETS skymapf_py
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
