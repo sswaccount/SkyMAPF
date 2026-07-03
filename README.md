@@ -5,6 +5,9 @@ Finding) datasets. The repository currently contains a reusable core library,
 small C++ examples, a CLI skeleton, tests, and Python bindings built with
 pybind11/scikit-build-core.
 
+Current status: `0.0.1-beta`. The project is public but still in early beta;
+APIs, data formats, and Python bindings may change before a stable release.
+
 ## Repository Layout
 
 ```text
@@ -69,20 +72,14 @@ python -m pip install build
 python -m build --wheel
 ```
 
-## Current Compilation Issue
+## Dependency Fetching
 
-In the current local environment, the default CMake configure step fails before
-compiling project source code because required dependencies are not available
-locally and `FetchContent` cannot clone from GitHub:
-
-```text
-Failed to clone repository: 'https://github.com/CLIUtils/CLI11.git'
-Failed to connect to 127.0.0.1 port 7897
-```
-
-This is a dependency/network setup problem, not yet a C++ source compilation
+If required dependencies are not available locally, CMake falls back to
+`FetchContent` and clones them from GitHub. In restricted or offline
+environments, configure may fail before compiling project source code. This is
+a dependency/network setup issue, not necessarily a C++ source compilation
 error. The default options enable the CLI, tests, examples, and Python bindings,
-so CMake may need to fetch CLI11, Catch2, pybind11, and nlohmann_json.
+so CMake may need CLI11, Catch2, pybind11, and nlohmann_json.
 
 Practical fixes:
 
@@ -102,6 +99,13 @@ cmake -S . -B build \
 
 If examples remain enabled, `nlohmann_json` is still required because the core
 library links it publicly.
+
+## Development CI
+
+The development workflow runs on pushes to `dev`, pull requests targeting
+`dev` or `main`, and manual dispatch. It currently verifies the C++ core, CLI,
+tests, and examples. Python bindings are experimental and are not part of the
+required development CI yet.
 
 ## Useful Build Options
 
@@ -126,3 +130,7 @@ After building examples, binaries are placed under `build/bin/examples`.
 
 `example/2_CreateScenario` writes a generated scenario under `data/`, and
 `example/3_ReadScenario` reads and validates a scenario folder.
+
+## License
+
+SkyMAPF is distributed under the MIT License. See `LICENSE`.
