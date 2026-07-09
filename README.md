@@ -107,6 +107,20 @@ The development workflow runs on pushes to `dev`, pull requests targeting
 tests, and examples. Python bindings are experimental and are not part of the
 required development CI yet.
 
+## Editor Setup
+
+For clangd-based C++ completion and diagnostics, configure CMake once so the
+project has `build/compile_commands.json`:
+
+```bash
+cmake -S . -B build -DSKYMAPF_BUILD_PYTHON_BINDINGS=OFF
+```
+
+The repository includes `.clangd`, which points clangd to the `build`
+compilation database. If VS Code still reports include errors from the Microsoft
+C/C++ extension, use the clangd extension for IntelliSense or point the C/C++
+extension at `build/compile_commands.json`.
+
 ## Useful Build Options
 
 | Option | Default | Meaning |
