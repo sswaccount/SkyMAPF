@@ -12,3 +12,5 @@
   that was not performed.
 - Defined the canonical `fnv1a64` semantic-instance fingerprint.
 - Published accepted and rejected Golden Fixtures.
+- Split search diagnostics into high-level and low-level node counters while
+  retaining aggregate expanded/generated counters.

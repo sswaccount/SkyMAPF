@@ -1,0 +1,22 @@
+{
+  "protocol_version": "skymapf.solve-request.v1",
+  "problem": {
+    "protocol_version": "skymapf.problem.v1",
+    "problem_id": "case-7",
+    "problem_type": "standard_mapf",
+    "semantics": "movingai_standard_v1",
+    "objective": "sum_of_costs",
+    "world": {
+      "kind": "grid_2d",
+      "width": 2,
+      "height": 2,
+      "blocked_cells": []
+    },
+    "agents": [
+      {"id": 1, "start": [0, 0], "goal": [1, 0]},
+      {"id": 2, "start": [1, 0], "goal": [0, 0]}
+    ],
+    "metadata": {"instance_id": 7, "instance_name": "protocol"}
+  },
+  "options": {"time_limit_ms": 250, "random_seed": 42, "node_limit": 1000}
+}

@@ -242,3 +242,25 @@ skymapf --task lifelong_mapf --solver lns --map warehouse.map --scenario test.sc
 
 短期目标是完成 basic CBS 的通用框架设计；中期目标是逐步加入 CBSH2-RTC 相关优化；长期目标是让 SkyMAPF 支持更多 MAPF solver、benchmark 和未来 learning-based 方法。
 
+---
+
+## 10. 当前迁移状态（2026-08-11）
+
+原型提交中的 `src/core/solver/*.hpp` 没有直接作为正式接口保留。当前实现将其概念映射为：
+
+| 原型概念 | 正式接口 |
+| --- | --- |
+| `Solver` | `skymapf::solver::ISolver` |
+| `Solution` | `SolveResult`、`Plan`、`SolutionMetrics` |
+| `Path` | `solution::AgentPath` |
+| `Conflict` | `search::Conflict`、`ConflictDetector` |
+| `Constraint` | `search::Constraint`、`ConstraintTable` |
+
+Stage 1 已完成可运行闭环，包括 Space-Time A*、Basic CBS、统一验证器、
+Benchmark Runner、MovingAI 输入以及跨进程 Protocol v1。
+
+Stage 2 从可插拔冲突选择开始。当前支持保持检测顺序的 `FirstDetected`
+和确定性全局最早的 `Earliest`，默认使用后者；后续 cardinal、
+semi-cardinal、bypass 和 WDG 必须继续通过同一选择边界扩展，不能把
+CBSH2-RTC 的实现细节写死进基础数据模型。运行记录同时拆分高层和低层
+搜索节点计数，以便比较优化发生在哪一层。

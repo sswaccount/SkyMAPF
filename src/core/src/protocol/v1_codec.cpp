@@ -535,6 +535,10 @@ std::optional<ordered_json> ProtocolV1Codec::encode_run_record(
         {"diagnostics", ordered_json{
             {"expanded_nodes", record.result.metrics.expanded_nodes},
             {"generated_nodes", record.result.metrics.generated_nodes},
+            {"high_level_expanded_nodes", record.result.metrics.high_level_expanded_nodes},
+            {"high_level_generated_nodes", record.result.metrics.high_level_generated_nodes},
+            {"low_level_expanded_nodes", record.result.metrics.low_level_expanded_nodes},
+            {"low_level_generated_nodes", record.result.metrics.low_level_generated_nodes},
         }},
         {"resources", ordered_json{
             {"wall_time_ms", record.wall_time_ms},

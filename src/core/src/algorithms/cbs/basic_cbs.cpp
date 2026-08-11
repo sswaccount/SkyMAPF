@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "skymapf/algorithms/low_level/space_time_astar.hpp"
-#include "skymapf/search/conflict_detector.hpp"
+#include "skymapf/algorithms/cbs/conflict_selector.hpp"
 #include "skymapf/search/constraint.hpp"
 #include "skymapf/search/constraint_table.hpp"
 #include "skymapf/solution/metrics.hpp"
@@ -126,6 +126,12 @@ solver::SolveResult BasicCBSSolver::solve(
     const auto started = std::chrono::steady_clock::now();
     solver::SolveResult result;
     const auto& instance = solve_instance.instance;
+    const auto record_low_level_stats = [&result](const auto& stats) {
+        result.metrics.expanded_nodes += stats.expanded_nodes;
+        result.metrics.generated_nodes += stats.generated_nodes;
+        result.metrics.low_level_expanded_nodes += stats.expanded_nodes;
+        result.metrics.low_level_generated_nodes += stats.generated_nodes;
+    };
 
     if (!supports_standard_mapf(instance)) {
         result.status = solver::SolveStatus::Unsupported;
@@ -144,8 +150,7 @@ solver::SolveResult BasicCBSSolver::solve(
             empty_reservations,
             options_.low_level
         );
-        result.metrics.expanded_nodes += low_result.stats.expanded_nodes;
-        result.metrics.generated_nodes += low_result.stats.generated_nodes;
+        record_low_level_stats(low_result.stats);
         if (low_result.status != low_level::LowLevelStatus::Success) {
             result.status = low_result.status == low_level::LowLevelStatus::NodeLimit
                 ? solver::SolveStatus::Timeout
@@ -165,6 +170,8 @@ solver::SolveResult BasicCBSSolver::solve(
     open.push(root);
     std::uint64_t next_node_id = 1;
     std::uint64_t expanded_high_level = 0;
+    result.metrics.generated_nodes += 1;
+    result.metrics.high_level_generated_nodes += 1;
 
     const auto high_level_limit = solve_options.node_limit > 0
         ? solve_options.node_limit
@@ -185,19 +192,25 @@ solver::SolveResult BasicCBSSolver::solve(
         auto node = open.top();
         open.pop();
         ++expanded_high_level;
+        ++result.metrics.expanded_nodes;
+        ++result.metrics.high_level_expanded_nodes;
 
         search::Conflict conflict;
-        if (!search::ConflictDetector::first_conflict(node->plan, conflict)) {
+        if (!ConflictSelector::select(
+                node->plan,
+                options_.conflict_selection,
+                conflict
+            )) {
             result.status = solver::SolveStatus::Success;
             result.plan = std::move(node->plan);
-            result.metrics.expanded_nodes += expanded_high_level;
-            result.metrics.generated_nodes += next_node_id;
             return result;
         }
 
         for (const auto agent_id : {conflict.a1, conflict.a2}) {
             auto child = std::make_shared<CBSNode>(*node);
             child->id = next_node_id++;
+            ++result.metrics.generated_nodes;
+            ++result.metrics.high_level_generated_nodes;
             child->constraints.push_back(branch_constraint(conflict, agent_id));
 
             const auto table = constraints_for(child->constraints, agent_id);
@@ -208,8 +221,7 @@ solver::SolveResult BasicCBSSolver::solve(
                 empty_reservations,
                 options_.low_level
             );
-            result.metrics.expanded_nodes += low_result.stats.expanded_nodes;
-            result.metrics.generated_nodes += low_result.stats.generated_nodes;
+            record_low_level_stats(low_result.stats);
             if (low_result.status != low_level::LowLevelStatus::Success) {
                 continue;
             }

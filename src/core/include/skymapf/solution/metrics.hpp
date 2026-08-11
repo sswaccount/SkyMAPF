@@ -17,6 +17,10 @@ struct SolutionMetrics {
     common::TimeStep makespan{0};
     std::uint64_t expanded_nodes{0};
     std::uint64_t generated_nodes{0};
+    std::uint64_t high_level_expanded_nodes{0};
+    std::uint64_t high_level_generated_nodes{0};
+    std::uint64_t low_level_expanded_nodes{0};
+    std::uint64_t low_level_generated_nodes{0};
 };
 
 SolutionMetrics compute_metrics(const Plan& plan);

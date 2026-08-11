@@ -130,10 +130,21 @@
     "diagnostics": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["expanded_nodes", "generated_nodes"],
+      "required": [
+        "expanded_nodes",
+        "generated_nodes",
+        "high_level_expanded_nodes",
+        "high_level_generated_nodes",
+        "low_level_expanded_nodes",
+        "low_level_generated_nodes"
+      ],
       "properties": {
         "expanded_nodes": {"type": "integer", "minimum": 0},
-        "generated_nodes": {"type": "integer", "minimum": 0}
+        "generated_nodes": {"type": "integer", "minimum": 0},
+        "high_level_expanded_nodes": {"type": "integer", "minimum": 0},
+        "high_level_generated_nodes": {"type": "integer", "minimum": 0},
+        "low_level_expanded_nodes": {"type": "integer", "minimum": 0},
+        "low_level_generated_nodes": {"type": "integer", "minimum": 0}
       }
     },
     "resources": {

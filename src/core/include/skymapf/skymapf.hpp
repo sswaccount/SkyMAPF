@@ -6,6 +6,7 @@
 
 #include "agent/model.hpp"
 #include "algorithms/cbs/basic_cbs.hpp"
+#include "algorithms/cbs/conflict_selector.hpp"
 #include "algorithms/low_level/i_single_agent_planner.hpp"
 #include "algorithms/low_level/space_time_astar.hpp"
 #include "algorithms/prioritized/prioritized_planning.hpp"

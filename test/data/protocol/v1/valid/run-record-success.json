@@ -1,0 +1,26 @@
+{
+  "protocol_version": "skymapf.run-record.v1",
+  "run_id": "run-001",
+  "problem_id": "case-7",
+  "instance_checksum": "fnv1a64:b137da8e33dfeb31",
+  "solver_status": "success",
+  "final_status": "valid_success",
+  "validation": {"performed": true, "valid": true, "errors": []},
+  "metrics": {"sum_of_costs": 4, "makespan": 3},
+  "diagnostics": {
+    "expanded_nodes": 7,
+    "generated_nodes": 11,
+    "high_level_expanded_nodes": 0,
+    "high_level_generated_nodes": 0,
+    "low_level_expanded_nodes": 0,
+    "low_level_generated_nodes": 0
+  },
+  "resources": {"wall_time_ms": 12, "peak_memory_bytes": 1024},
+  "provenance": {
+    "solver_name": "fixture",
+    "solver_version": "1.0",
+    "solver_commit": "abc123",
+    "random_seed": 42,
+    "environment": {"os": "test"}
+  }
+}

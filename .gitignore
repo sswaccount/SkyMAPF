@@ -1,6 +1,8 @@
 build*/
 cmake-build-*/
 data/
+!test/data/
+!test/data/**
 .cache/
 .idea/
 .vscode/

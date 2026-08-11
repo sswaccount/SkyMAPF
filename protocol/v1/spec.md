@@ -80,6 +80,11 @@ Canonical metrics are:
 Expanded and generated node counts are solver-reported diagnostics and are not
 trusted measures of solution validity or quality.
 
+Run records separate high-level and low-level expanded/generated node counts.
+The aggregate counters MUST equal their high-level plus low-level components
+for in-process reference solvers. External solvers that cannot expose this
+split report zero components while retaining their aggregate counters.
+
 ## Instance fingerprint
 
 The C++ reference implementation currently emits

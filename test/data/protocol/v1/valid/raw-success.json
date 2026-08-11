@@ -1,0 +1,16 @@
+{
+  "protocol_version": "skymapf.raw-solve-result.v1",
+  "problem_id": "case-7",
+  "solver": {
+    "name": "fixture",
+    "version": "1.0",
+    "commit": "abc123",
+    "configuration": {"variant": "basic"}
+  },
+  "status": "success",
+  "paths": [
+    {"agent_id": 1, "cells": [[0, 0], [0, 1], [1, 1], [1, 0]]},
+    {"agent_id": 2, "cells": [[1, 0], [0, 0]]}
+  ],
+  "statistics": {"expanded_nodes": 7, "generated_nodes": 11}
+}

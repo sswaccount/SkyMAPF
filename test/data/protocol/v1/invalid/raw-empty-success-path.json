@@ -1,0 +1,7 @@
+{
+  "protocol_version": "skymapf.raw-solve-result.v1",
+  "problem_id": "case-7",
+  "solver": {"name": "fixture", "version": "1.0"},
+  "status": "success",
+  "paths": [{"agent_id": 1, "cells": []}]
+}
