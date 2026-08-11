@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skymapf.org/protocol/v1/solve-request.schema.json",
+  "title": "SkyMAPF Solve Request Protocol v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "problem", "options"],
+  "properties": {
+    "protocol_version": {"const": "skymapf.solve-request.v1"},
+    "problem": {"$ref": "problem.schema.json"},
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["time_limit_ms", "random_seed", "node_limit"],
+      "properties": {
+        "time_limit_ms": {"type": "integer", "minimum": 0},
+        "random_seed": {"type": "integer", "minimum": 0},
+        "node_limit": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

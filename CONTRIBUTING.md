@@ -27,6 +27,17 @@ ctest --test-dir build --output-on-failure
 
 Python bindings are present but not part of the required development CI yet.
 
+## Editor Setup
+
+Run CMake before opening or indexing the project with clangd:
+
+```bash
+cmake -S . -B build -DSKYMAPF_BUILD_PYTHON_BINDINGS=OFF
+```
+
+This generates `build/compile_commands.json`, which `.clangd` uses for include
+paths, generated headers, compile flags, and third-party dependencies.
+
 ## Style
 
 Use the existing CMake and C++ style in the surrounding files. Comment style

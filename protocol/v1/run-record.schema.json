@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skymapf.org/protocol/v1/run-record.schema.json",
+  "title": "SkyMAPF Benchmark Run Record Protocol v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version",
+    "run_id",
+    "problem_id",
+    "instance_checksum",
+    "solver_status",
+    "final_status",
+    "validation",
+    "metrics",
+    "diagnostics",
+    "resources",
+    "provenance"
+  ],
+  "properties": {
+    "protocol_version": {"const": "skymapf.run-record.v1"},
+    "run_id": {"type": "string", "minLength": 1},
+    "problem_id": {"type": "string", "minLength": 1},
+    "instance_checksum": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]+:[a-f0-9]+$"
+    },
+    "solver_status": {
+      "enum": ["success", "infeasible", "timeout", "unsupported", "error"]
+    },
+    "final_status": {
+      "enum": [
+        "valid_success",
+        "invalid_solution",
+        "infeasible",
+        "timeout",
+        "unsupported",
+        "error"
+      ]
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["performed", "valid", "errors"],
+      "properties": {
+        "performed": {"type": "boolean"},
+        "valid": {"type": "boolean"},
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "agent_id",
+              "other_agent_id",
+              "time",
+              "cell",
+              "from",
+              "to",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "enum": [
+                  "missing_path",
+                  "unexpected_path",
+                  "duplicate_path",
+                  "empty_path",
+                  "invalid_start",
+                  "invalid_goal",
+                  "invalid_cell",
+                  "invalid_move",
+                  "vertex_conflict",
+                  "edge_conflict"
+                ]
+              },
+              "agent_id": {"type": "integer", "minimum": 0},
+              "other_agent_id": {"type": "integer", "minimum": 0},
+              "time": {"type": "integer", "minimum": 0},
+              "cell": {"type": "integer", "minimum": 0},
+              "from": {"type": "integer", "minimum": 0},
+              "to": {"type": "integer", "minimum": 0},
+              "message": {"type": "string"}
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"performed": {"const": false}}},
+          "then": {
+            "properties": {
+              "valid": {"const": false},
+              "errors": {"maxItems": 0}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "performed": {"const": true},
+              "valid": {"const": true}
+            },
+            "required": ["performed", "valid"]
+          },
+          "then": {"properties": {"errors": {"maxItems": 0}}}
+        },
+        {
+          "if": {
+            "properties": {
+              "performed": {"const": true},
+              "valid": {"const": false}
+            },
+            "required": ["performed", "valid"]
+          },
+          "then": {"properties": {"errors": {"minItems": 1}}}
+        }
+      ]
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sum_of_costs", "makespan"],
+      "properties": {
+        "sum_of_costs": {"type": "integer", "minimum": 0},
+        "makespan": {"type": "integer", "minimum": 0}
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expanded_nodes", "generated_nodes"],
+      "properties": {
+        "expanded_nodes": {"type": "integer", "minimum": 0},
+        "generated_nodes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wall_time_ms", "peak_memory_bytes"],
+      "properties": {
+        "wall_time_ms": {"type": "integer", "minimum": 0},
+        "peak_memory_bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "solver_name",
+        "solver_version",
+        "solver_commit",
+        "random_seed",
+        "environment"
+      ],
+      "properties": {
+        "solver_name": {"type": "string", "minLength": 1},
+        "solver_version": {"type": "string", "minLength": 1},
+        "solver_commit": {"type": "string"},
+        "random_seed": {"type": "integer", "minimum": 0},
+        "environment": {"type": "object"}
+      }
+    },
+    "message": {"type": "string"}
+  }
+}

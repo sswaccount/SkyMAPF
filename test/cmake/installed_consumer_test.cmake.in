@@ -1,0 +1,88 @@
+set(test_root "@CMAKE_CURRENT_BINARY_DIR@/installed-consumer-test")
+set(install_prefix "${test_root}/prefix")
+set(consumer_build "${test_root}/build")
+
+file(REMOVE_RECURSE "${test_root}")
+
+set(install_command
+    "@CMAKE_COMMAND@"
+    --install "@CMAKE_BINARY_DIR@"
+    --prefix "${install_prefix}"
+)
+if(NOT "@CMAKE_CONFIGURATION_TYPES@" STREQUAL "")
+    list(APPEND install_command --config "$ENV{CTEST_CONFIGURATION_TYPE}")
+endif()
+execute_process(
+    COMMAND ${install_command}
+    RESULT_VARIABLE install_result
+    OUTPUT_VARIABLE install_output
+    ERROR_VARIABLE install_error
+)
+if(NOT install_result EQUAL 0)
+    message(FATAL_ERROR
+        "SkyMAPF SDK install failed:\n${install_output}\n${install_error}"
+    )
+endif()
+
+set(configure_command
+    "@CMAKE_COMMAND@"
+    -S "@CMAKE_CURRENT_SOURCE_DIR@/consumer"
+    -B "${consumer_build}"
+    -G "@CMAKE_GENERATOR@"
+    "-DCMAKE_PREFIX_PATH=${install_prefix}"
+    "-DCMAKE_BUILD_TYPE=@CMAKE_BUILD_TYPE@"
+)
+if(NOT "@CMAKE_GENERATOR_PLATFORM@" STREQUAL "")
+    list(APPEND configure_command -A "@CMAKE_GENERATOR_PLATFORM@")
+endif()
+if(NOT "@CMAKE_GENERATOR_TOOLSET@" STREQUAL "")
+    list(APPEND configure_command -T "@CMAKE_GENERATOR_TOOLSET@")
+endif()
+if(NOT "@nlohmann_json_DIR@" STREQUAL "" AND
+   NOT "@nlohmann_json_DIR@" MATCHES "-NOTFOUND$")
+    list(APPEND configure_command "-Dnlohmann_json_DIR=@nlohmann_json_DIR@")
+endif()
+execute_process(
+    COMMAND ${configure_command}
+    RESULT_VARIABLE configure_result
+    OUTPUT_VARIABLE configure_output
+    ERROR_VARIABLE configure_error
+)
+if(NOT configure_result EQUAL 0)
+    message(FATAL_ERROR
+        "Installed SDK consumer configure failed:\n${configure_output}\n${configure_error}"
+    )
+endif()
+
+set(build_command "@CMAKE_COMMAND@" --build "${consumer_build}")
+if(NOT "@CMAKE_CONFIGURATION_TYPES@" STREQUAL "")
+    list(APPEND build_command --config "$ENV{CTEST_CONFIGURATION_TYPE}")
+endif()
+execute_process(
+    COMMAND ${build_command}
+    RESULT_VARIABLE build_result
+    OUTPUT_VARIABLE build_output
+    ERROR_VARIABLE build_error
+)
+if(NOT build_result EQUAL 0)
+    message(FATAL_ERROR
+        "Installed SDK consumer build failed:\n${build_output}\n${build_error}"
+    )
+endif()
+
+set(consumer_executable "${consumer_build}/bin/skymapf_sdk_consumer")
+if(WIN32)
+    set(consumer_executable "${consumer_executable}.exe")
+endif()
+execute_process(
+    COMMAND "${consumer_executable}"
+    RESULT_VARIABLE run_result
+    OUTPUT_VARIABLE run_output
+    ERROR_VARIABLE run_error
+)
+if(NOT run_result EQUAL 0)
+    message(FATAL_ERROR
+        "Installed SDK consumer run failed:\n${run_output}\n${run_error}"
+    )
+endif()
+message(STATUS "${run_output}")

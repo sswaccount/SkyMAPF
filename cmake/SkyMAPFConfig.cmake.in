@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(nlohmann_json CONFIG)
+
+include("${CMAKE_CURRENT_LIST_DIR}/SkyMAPFTargets.cmake")
+
+set_and_check(SkyMAPF_PROTOCOL_DIR "@PACKAGE_SKYMAPF_INSTALL_PROTOCOL_DIR@")
+set(SkyMAPF_VERSION "@SKYMAPF_FULL_VERSION@")
+
+check_required_components(SkyMAPF)

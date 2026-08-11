@@ -24,7 +24,30 @@ target_include_directories(skymapf_core
     PUBLIC
         "$<BUILD_INTERFACE:${SKYMAPF_GENERATED_INCLUDE_DIR}>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
 target_link_libraries(skymapf_core PUBLIC nlohmann_json::nlohmann_json)
 
 skymapf_apply_warnings(skymapf_core)
+
+set_target_properties(skymapf_core PROPERTIES
+    EXPORT_NAME core
+    VERSION "${PROJECT_VERSION}"
+    SOVERSION "${PROJECT_VERSION_MAJOR}"
+)
+
+if(SKYMAPF_INSTALL_CPP_SDK)
+    install(TARGETS skymapf_core
+        EXPORT SkyMAPFTargets
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+    )
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/skymapf"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+        FILES_MATCHING PATTERN "*.hpp"
+    )
+    install(FILES "${SKYMAPF_GENERATED_INCLUDE_DIR}/skymapf/version.hpp"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/skymapf"
+    )
+endif()

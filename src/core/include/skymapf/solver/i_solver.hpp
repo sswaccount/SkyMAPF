@@ -4,61 +4,16 @@
  */
 #pragma once
 
-#include <cstdint>
-#include <string>
-#include <vector>
-
-#include "../common/ids.hpp"
 #include "../instance/model.hpp"
+#include "model/solver_info.hpp"
+#include "solve_options.hpp"
+#include "solve_result.hpp"
 
 namespace skymapf::solver {
-
-/// Classifies solver implementation families.
-enum class SolverFamily {
-    Unknown,
-    Classical,
-    ModelBased,
-    AI,
-};
-
-/// Standardized solve status outcomes.
-enum class SolveStatus {
-    Success,
-    Infeasible,
-    Timeout,
-    Error,
-};
-
-/// Describes solver metadata exposed to clients.
-struct SolverInfo {
-    std::string name;
-    SolverFamily family{SolverFamily::Unknown};
-    std::string version;
-    std::string description;
-};
-
-/// Common runtime options passed to solver executions.
-struct SolveOptions {
-    std::uint64_t time_limit_ms{0};
-    std::uint64_t random_seed{0};
-};
-
-/// Multi-agent planning output represented as per-agent cell sequences.
-struct Plan {
-    std::vector<std::vector<common::CellIndex>> agent_paths;
-};
 
 /// Input bundle for one solver invocation.
 struct SolveInstance {
     instance::InstanceModel instance;
-};
-
-/// Output bundle for one solver invocation.
-struct SolveResult {
-    SolveStatus status{SolveStatus::Error};
-    Plan plan;
-    std::uint64_t elapsed_ms{0};
-    std::string message;
 };
 
 /**
@@ -81,6 +36,14 @@ public:
         const SolveInstance& instance,
         const SolveOptions& options
     ) = 0;
+
+    /// Convenience overload for callers that already hold an InstanceModel.
+    virtual SolveResult solve(
+        const instance::InstanceModel& instance,
+        const SolveOptions& options
+    ) {
+        return solve(SolveInstance{instance}, options);
+    }
 };
 
 }  // namespace skymapf::solver
