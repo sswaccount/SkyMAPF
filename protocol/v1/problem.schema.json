@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skymapf.org/protocol/v1/problem.schema.json",
+  "title": "SkyMAPF Problem Protocol v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version",
+    "problem_id",
+    "problem_type",
+    "semantics",
+    "objective",
+    "world",
+    "agents"
+  ],
+  "properties": {
+    "protocol_version": {"const": "skymapf.problem.v1"},
+    "problem_id": {"type": "string", "minLength": 1},
+    "problem_type": {"const": "standard_mapf"},
+    "semantics": {"const": "movingai_standard_v1"},
+    "objective": {
+      "enum": ["sum_of_costs", "makespan"]
+    },
+    "world": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "width", "height", "blocked_cells"],
+      "properties": {
+        "kind": {"const": "grid_2d"},
+        "width": {"type": "integer", "minimum": 1},
+        "height": {"type": "integer", "minimum": 1},
+        "blocked_cells": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/coordinate"}
+        }
+      }
+    },
+    "agents": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "start", "goal"],
+        "properties": {
+          "id": {"type": "integer", "minimum": 1},
+          "start": {"$ref": "#/$defs/coordinate"},
+          "goal": {"$ref": "#/$defs/coordinate"}
+        }
+      }
+    },
+    "metadata": {"type": "object"}
+  },
+  "$defs": {
+    "coordinate": {
+      "type": "array",
+      "prefixItems": [
+        {"type": "integer", "minimum": 0},
+        {"type": "integer", "minimum": 0}
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    }
+  }
+}

@@ -22,6 +22,12 @@ public:
         common::TimeStep arrival_time
     ) const noexcept;
 
+    /// Returns whether the cell is forbidden at any time at or after @p time.
+    bool has_future_vertex_constraint(
+        common::CellIndex cell,
+        common::TimeStep time
+    ) const noexcept;
+
     const std::vector<Constraint>& constraints() const noexcept { return constraints_; }
 
 private:

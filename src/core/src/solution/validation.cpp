@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <string>
+#include <unordered_set>
 
 namespace skymapf::solution {
 
@@ -42,6 +43,28 @@ ValidationResult SolutionValidator::validate(
 ) {
     ValidationResult result;
     const auto& world = instance.world();
+
+    std::unordered_set<common::AgentId> seen_agent_ids;
+    for (const auto& path : plan.agent_paths) {
+        if (!instance.task().has_agent(path.agent_id)) {
+            add_error(
+                result,
+                ValidationErrorKind::UnexpectedPath,
+                path.agent_id,
+                path.start_time,
+                "path belongs to an agent outside the instance"
+            );
+        }
+        if (!seen_agent_ids.insert(path.agent_id).second) {
+            add_error(
+                result,
+                ValidationErrorKind::DuplicatePath,
+                path.agent_id,
+                path.start_time,
+                "duplicate path for agent"
+            );
+        }
+    }
 
     for (const auto& entry : instance.task().agent_entries()) {
         const auto* path = plan.find_path(entry.agent_id);

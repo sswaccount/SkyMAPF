@@ -39,4 +39,19 @@ bool ConstraintTable::violates_edge(
     return false;
 }
 
+bool ConstraintTable::has_future_vertex_constraint(
+    common::CellIndex cell,
+    common::TimeStep time
+) const noexcept {
+    for (const auto& constraint : constraints_) {
+        if ((constraint.kind == ConstraintKind::Vertex ||
+             constraint.kind == ConstraintKind::Range) &&
+            constraint.from == cell &&
+            constraint.time_max >= time) {
+            return true;
+        }
+    }
+    return false;
+}
+
 }  // namespace skymapf::search

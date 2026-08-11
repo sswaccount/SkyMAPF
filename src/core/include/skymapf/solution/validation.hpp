@@ -14,6 +14,8 @@ namespace skymapf::solution {
 
 enum class ValidationErrorKind {
     MissingPath,
+    UnexpectedPath,
+    DuplicatePath,
     EmptyPath,
     InvalidStart,
     InvalidGoal,

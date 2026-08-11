@@ -42,7 +42,11 @@ struct CompareQueueNode {
 };
 
 std::uint64_t fallback_heuristic(common::CellIndex from, common::CellIndex to) {
-    return from > to ? from - to : to - from;
+    // Cell indices do not encode distance for arbitrary connectivity graphs.
+    // A zero heuristic keeps this reusable low-level search optimal.
+    (void)from;
+    (void)to;
+    return 0;
 }
 
 std::vector<common::CellIndex> reconstruct_path(
@@ -97,6 +101,12 @@ LowLevelSearchResult SpaceTimeAStar::find_path(
     std::unordered_map<State, State, StateHash> parent;
 
     const State initial{start, start_time};
+    if (constraints.violates_vertex(start, start_time) ||
+        reservations.reserved(start, start_time)) {
+        result.status = LowLevelStatus::Infeasible;
+        result.message = "start cell is constrained or reserved";
+        return result;
+    }
     open.push(QueueNode{initial, 0, fallback_heuristic(start, goal)});
     best_g[initial] = 0;
     result.stats.generated_nodes = 1;
@@ -112,7 +122,8 @@ LowLevelSearchResult SpaceTimeAStar::find_path(
             return result;
         }
 
-        if (current.state.cell == goal) {
+        if (current.state.cell == goal &&
+            !constraints.has_future_vertex_constraint(goal, current.state.time)) {
             result.status = LowLevelStatus::Success;
             result.path.agent_id = agent_id;
             result.path.start_time = start_time;

@@ -5,6 +5,9 @@ cmake_minimum_required(VERSION 3.15)
 # ---------------------------------------------------------------------------
 project(SkyMAPF VERSION 0.0.1 LANGUAGES CXX)
 
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
 # Keep numeric version in project(...), and manage prerelease tag separately.
 set(SKYMAPF_VERSION_SUFFIX "-beta")
 set(SKYMAPF_FULL_VERSION "${PROJECT_VERSION}${SKYMAPF_VERSION_SUFFIX}")
@@ -29,6 +32,7 @@ option(SKYMAPF_BUILD_TESTS "Build tests under test/." ON)
 option(SKYMAPF_BUILD_EXAMPLES "Build examples under example/." ON)
 option(SKYMAPF_BUILD_PYTHON_BINDINGS "Build Python bindings under bindings/python." ON)
 option(SKYMAPF_WARNINGS_AS_ERRORS "Treat compiler warnings as errors." OFF)
+option(SKYMAPF_INSTALL_CPP_SDK "Install the C++ SDK, CMake package, and protocol files." ON)
 
 # Keep outputs tidy.
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
@@ -111,4 +115,52 @@ if(SKYMAPF_BUILD_PYTHON_BINDINGS)
     else()
         message(STATUS "SKYMAPF_BUILD_PYTHON_BINDINGS=ON, but bindings/python/CMakeLists.txt was not found.")
     endif()
+endif()
+
+# ---------------------------------------------------------------------------
+# Installable C++ SDK package
+# ---------------------------------------------------------------------------
+if(SKYMAPF_INSTALL_CPP_SDK)
+    set(SKYMAPF_INSTALL_CMAKEDIR
+        "${CMAKE_INSTALL_LIBDIR}/cmake/SkyMAPF"
+        CACHE PATH "Install directory for SkyMAPF CMake package files"
+    )
+    set(SKYMAPF_INSTALL_PROTOCOL_DIR
+        "${CMAKE_INSTALL_DATADIR}/skymapf/protocol"
+        CACHE PATH "Install directory for SkyMAPF protocol resources"
+    )
+
+    configure_package_config_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/SkyMAPFConfig.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/SkyMAPFConfig.cmake"
+        INSTALL_DESTINATION "${SKYMAPF_INSTALL_CMAKEDIR}"
+        PATH_VARS SKYMAPF_INSTALL_PROTOCOL_DIR
+    )
+    write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/SkyMAPFConfigVersion.cmake"
+        VERSION "${PROJECT_VERSION}"
+        COMPATIBILITY SameMajorVersion
+    )
+
+    install(EXPORT SkyMAPFTargets
+        FILE SkyMAPFTargets.cmake
+        NAMESPACE SkyMAPF::
+        DESTINATION "${SKYMAPF_INSTALL_CMAKEDIR}"
+    )
+    install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/SkyMAPFConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/SkyMAPFConfigVersion.cmake"
+        DESTINATION "${SKYMAPF_INSTALL_CMAKEDIR}"
+    )
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/protocol/"
+        DESTINATION "${SKYMAPF_INSTALL_PROTOCOL_DIR}"
+        FILES_MATCHING
+        PATTERN "*.json"
+        PATTERN "*.md"
+    )
+    install(FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+        "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/skymapf"
+    )
 endif()

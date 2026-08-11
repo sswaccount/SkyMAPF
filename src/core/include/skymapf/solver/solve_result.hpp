@@ -17,6 +17,7 @@ enum class SolveStatus {
     Success,
     Infeasible,
     Timeout,
+    Unsupported,
     Error,
 };
 

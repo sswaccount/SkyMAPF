@@ -47,6 +47,8 @@ if(SKYMAPF_BUILD_TESTS)
 endif()
 
 if(SKYMAPF_BUILD_PYTHON_BINDINGS)
+  # Prefer CMake's modern FindPython integration on current pybind11 releases.
+  set(PYBIND11_FINDPYTHON ON)
   if(SKYMAPF_USE_SYSTEM_DEPS)
     find_package(pybind11 CONFIG QUIET)
   endif()

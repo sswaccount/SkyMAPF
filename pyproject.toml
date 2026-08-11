@@ -8,7 +8,7 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "skymapf"
 version = "0.0.1b0"
-description = "SkyMAPF Python bindings"
+description = "Protocol SDK and optional native bindings for SkyMAPF solvers"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
@@ -28,10 +28,16 @@ classifiers = [
 ]
 
 [tool.scikit-build]
-wheel.packages = []
+wheel.packages = ["python/skymapf"]
 build-dir = "build/{wheel_tag}"
+
+[tool.scikit-build.cmake.define]
+SKYMAPF_INSTALL_CPP_SDK = "OFF"
+SKYMAPF_BUILD_CLI = "OFF"
+SKYMAPF_BUILD_TESTS = "OFF"
+SKYMAPF_BUILD_EXAMPLES = "OFF"
 
 [tool.cibuildwheel]
 build = "cp310-* cp311-* cp312-* cp313-*"
 skip = "*-musllinux_*"
-test-command = "python -c \"import skymapf; print(skymapf.__version__)\""
+test-command = "python -c \"import skymapf; print(skymapf.__version__, skymapf.HAS_CORE)\""
