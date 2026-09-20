@@ -1,11 +1,15 @@
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <vector>
+
+#include <nlohmann/json.hpp>
 
 #include "skymapf/algorithms/cbs/basic_cbs.hpp"
 #include "skymapf/algorithms/prioritized/prioritized_planning.hpp"
 #include "skymapf/benchmark/runner.hpp"
 #include "skymapf/common/space.hpp"
+#include "skymapf/common/index.hpp"
 #include "skymapf/generator/world_generator.hpp"
 #include "skymapf/instance/model.hpp"
 #include "skymapf/task/model.hpp"
@@ -15,8 +19,33 @@ namespace {
 void print_run(
     const std::string& benchmark,
     std::size_t agents,
+    const skymapf::instance::InstanceModel& instance,
     const skymapf::benchmark::RunRecord& run
 ) {
+    nlohmann::ordered_json solution;
+    const auto shape = instance.world().space_spec().shape_2d();
+    solution["name"] = benchmark;
+    solution["rows"] = shape.rows;
+    solution["cols"] = shape.cols;
+    solution["obstacles"] = nlohmann::ordered_json::array();
+    solution["agents"] = nlohmann::ordered_json::array();
+    std::size_t total_steps = 0;
+    for (const auto& path : run.result.plan.agent_paths) {
+        nlohmann::ordered_json agent;
+        agent["id"] = path.agent_id;
+        agent["path"] = nlohmann::ordered_json::array();
+        for (const auto cell : path.cells) {
+            const auto coord = skymapf::common::to_coord_2d(cell, shape);
+            agent["path"].push_back({coord.x, coord.y});
+        }
+        if (!path.cells.empty()) {
+            agent["start"] = agent["path"].front();
+            agent["goal"] = agent["path"].back();
+            total_steps = std::max(total_steps, path.cells.size() - 1);
+        }
+        solution["agents"].push_back(std::move(agent));
+    }
+    solution["totalSteps"] = total_steps;
     std::cout << "SKYMAPF_RESULT"
               << "\tbenchmark=" << benchmark
               << "\tsolver=" << run.solver_info.name
@@ -26,7 +55,8 @@ void print_run(
               << "\tmakespan=" << run.result.metrics.makespan
               << "\twall_ms=" << run.wall_time_ms
               << "\texpanded=" << run.result.metrics.expanded_nodes
-              << "\tgenerated=" << run.result.metrics.generated_nodes << '\n';
+              << "\tgenerated=" << run.result.metrics.generated_nodes
+              << "\tsolution=" << solution.dump() << '\n';
 }
 
 struct BenchmarkCase {
@@ -65,8 +95,8 @@ int main() {
             prioritized, instance, options
         );
         const auto cbs_run = skymapf::benchmark::BenchmarkRunner::run(cbs, instance, options);
-        print_run(benchmark.name, benchmark.routes.size(), prioritized_run);
-        print_run(benchmark.name, benchmark.routes.size(), cbs_run);
+        print_run(benchmark.name, benchmark.routes.size(), instance, prioritized_run);
+        print_run(benchmark.name, benchmark.routes.size(), instance, cbs_run);
         all_valid = all_valid && prioritized_run.valid_success() && cbs_run.valid_success();
     }
     return all_valid ? 0 : 1;
