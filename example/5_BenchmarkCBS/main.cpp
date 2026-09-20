@@ -1,4 +1,6 @@
 #include <iostream>
+#include <string>
+#include <vector>
 
 #include "skymapf/algorithms/cbs/basic_cbs.hpp"
 #include "skymapf/algorithms/prioritized/prioritized_planning.hpp"
@@ -10,46 +12,62 @@
 
 namespace {
 
-void print_run(const skymapf::benchmark::RunRecord& run) {
-    std::cout << run.solver_info.name
+void print_run(
+    const std::string& benchmark,
+    std::size_t agents,
+    const skymapf::benchmark::RunRecord& run
+) {
+    std::cout << "SKYMAPF_RESULT"
+              << "\tbenchmark=" << benchmark
+              << "\tsolver=" << run.solver_info.name
+              << "\tagents=" << agents
               << "\tvalid=" << (run.valid_success() ? "yes" : "no")
-              << "\tSOC=" << run.result.metrics.sum_of_costs
+              << "\tsoc=" << run.result.metrics.sum_of_costs
               << "\tmakespan=" << run.result.metrics.makespan
-              << "\twall_ms=" << run.wall_time_ms << '\n';
+              << "\twall_ms=" << run.wall_time_ms
+              << "\texpanded=" << run.result.metrics.expanded_nodes
+              << "\tgenerated=" << run.result.metrics.generated_nodes << '\n';
 }
+
+struct BenchmarkCase {
+    std::string name;
+    skymapf::common::SpaceSpec space;
+    std::vector<std::pair<skymapf::common::CellIndex, skymapf::common::CellIndex>> routes;
+};
 
 }  // namespace
 
 int main() {
-    auto world = skymapf::generator::WorldGenerator::generate(
-        skymapf::generator::WorldGenerationOptions(
-            skymapf::common::SpaceSpec::make_2d(2, 2),
-            0.0
-        )
-    );
+    const std::vector<BenchmarkCase> cases{
+        {"swap-2x2", skymapf::common::SpaceSpec::make_2d(2, 2), {{0, 1}, {1, 0}}},
+        {"cross-3x3", skymapf::common::SpaceSpec::make_2d(3, 3), {{3, 5}, {1, 7}}},
+        {"rotation-3x3", skymapf::common::SpaceSpec::make_2d(3, 3), {{0, 2}, {2, 8}, {8, 6}}},
+    };
+    const skymapf::solver::SolveOptions options{5000, 42, 100000};
+    bool all_valid = true;
+    skymapf::common::InstanceId instance_id = 1;
 
-    skymapf::task::TaskModel task(1, "two_agent_swap");
-    task.add_agent_entry(1, skymapf::task::SequenceModel{{0, 1}});
-    task.add_agent_entry(2, skymapf::task::SequenceModel{{1, 0}});
-    auto instance = skymapf::instance::InstanceModel::create(
-        1,
-        std::move(world),
-        std::move(task),
-        "cbs_benchmark_demo"
-    );
-
-    const skymapf::solver::SolveOptions options{1000, 42, 1000};
-    skymapf::algorithms::prioritized::PrioritizedPlanningSolver prioritized;
-    skymapf::algorithms::cbs::BasicCBSSolver cbs;
-    const auto prioritized_run = skymapf::benchmark::BenchmarkRunner::run(
-        prioritized,
-        instance,
-        options
-    );
-    const auto cbs_run = skymapf::benchmark::BenchmarkRunner::run(cbs, instance, options);
-
-    std::cout << "Two-agent swap benchmark\n";
-    print_run(prioritized_run);
-    print_run(cbs_run);
-    return prioritized_run.valid_success() && cbs_run.valid_success() ? 0 : 1;
+    for (const auto& benchmark : cases) {
+        auto world = skymapf::generator::WorldGenerator::generate(
+            skymapf::generator::WorldGenerationOptions(benchmark.space, 0.0)
+        );
+        skymapf::task::TaskModel task(instance_id, benchmark.name);
+        skymapf::common::AgentId agent_id = 1;
+        for (const auto& [start, goal] : benchmark.routes) {
+            task.add_agent_entry(agent_id++, skymapf::task::SequenceModel{{start, goal}});
+        }
+        auto instance = skymapf::instance::InstanceModel::create(
+            instance_id++, std::move(world), std::move(task), benchmark.name
+        );
+        skymapf::algorithms::prioritized::PrioritizedPlanningSolver prioritized;
+        skymapf::algorithms::cbs::BasicCBSSolver cbs;
+        const auto prioritized_run = skymapf::benchmark::BenchmarkRunner::run(
+            prioritized, instance, options
+        );
+        const auto cbs_run = skymapf::benchmark::BenchmarkRunner::run(cbs, instance, options);
+        print_run(benchmark.name, benchmark.routes.size(), prioritized_run);
+        print_run(benchmark.name, benchmark.routes.size(), cbs_run);
+        all_valid = all_valid && prioritized_run.valid_success() && cbs_run.valid_success();
+    }
+    return all_valid ? 0 : 1;
 }
