@@ -72,6 +72,8 @@ int main() {
         {"swap-2x2", skymapf::common::SpaceSpec::make_2d(2, 2), {{0, 1}, {1, 0}}},
         {"cross-3x3", skymapf::common::SpaceSpec::make_2d(3, 3), {{3, 5}, {1, 7}}},
         {"rotation-3x3", skymapf::common::SpaceSpec::make_2d(3, 3), {{0, 2}, {2, 8}, {8, 6}}},
+        {"crossing-5x5", skymapf::common::SpaceSpec::make_2d(5, 5),
+         {{10, 14}, {2, 22}, {5, 9}, {19, 15}, {20, 4}}},
     };
     const skymapf::solver::SolveOptions options{5000, 42, 100000};
     bool all_valid = true;
